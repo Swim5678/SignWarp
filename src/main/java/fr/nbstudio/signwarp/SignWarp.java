@@ -14,22 +14,11 @@ public final class SignWarp extends JavaPlugin implements Listener {
         // Check for updates
         new UpdateChecker(this, RESOURCE_ID).getVersion(version -> {
             if (this.getDescription().getVersion().equals(version)) {
-                getLogger().info("No new version available");
+                getLogger().info("沒有可用的新版本");
             } else {
-                getLogger().warning("A new version of the plugin is available: " + version + " (current: " + this.getDescription().getVersion() + "). Download it here: " + PLUGIN_URL);
+                getLogger().warning("該插件的新版本現已推出： " + version + " （目前的： " + this.getDescription().getVersion() + "）。在這裡下載： " + PLUGIN_URL);
             }
         });
-
-        // Setup Vault economy if available
-        if (getServer().getPluginManager().getPlugin("Vault") != null) {
-            if (!VaultEconomy.setupEconomy()) {
-                getLogger().warning("Vault is installed but economy setup failed.");
-            } else {
-                getLogger().info("Vault economy setup successfully.");
-            }
-        } else {
-
-        }
 
         // Save default config
         saveDefaultConfig();
