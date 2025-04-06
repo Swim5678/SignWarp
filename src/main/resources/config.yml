@@ -5,10 +5,10 @@ use-item: ENDER_PEARL
 use-cost: 1
 
 # 傳送前的冷卻時間（單位：秒）
-teleport-cooldown: 5
+teleport-delay: 5
 
-# 傳送的費用（設為 0 代表不收費）
-teleport-cost: 0
+# 設置傳送完成後的冷卻（單位：秒）
+teleport-use-cooldown: 10
 
 # 傳送時播放的音效
 teleport-sound: ENTITY_ENDERMAN_TELEPORT
@@ -33,7 +33,7 @@ messages:
   no_warp_name: "&c未設定傳送名稱！\n請在第二行設定傳送名稱。"
   warp_created: "&a傳送標誌已成功建立。"
   warp_name_taken: "&c已有相同名稱的傳送目標！"
-  warp_destroyed: "&a傳送已被摧毀。"
+  warp_destroyed: "&a傳送目標已被摧毀。"
   target_sign_created: "&a傳送目標標誌已成功建立。"
   destroy_permission: "&c您沒有權限摧毀傳送標誌！"
   invalid_item: "&c您必須使用 {use-item} 來啟用此傳送！"
@@ -45,3 +45,4 @@ messages:
   teleport-cancelled: "&c傳送已取消。"
   notify-cost: "&a您已被收取 {cost} 金幣進行傳送。"
   not_permission: "&c您沒有權限！"
+  cooldown: "&c您必須等待 {cooldown} 秒才能再次傳送。"
