@@ -1,0 +1,41 @@
+# Item required to use a warp sign (none to disable)
+use-item: ENDER_PEARL
+
+# Number of items consumed by using a warp sign
+use-cost: 1
+
+# 消耗的物品與數量設置
+create-item: "DIAMOND_SWORD" # 設置創建傳送門時需要消耗的物品
+create-item-cost: 1 # 設置創建傳送門時需要消耗的物品數量
+
+# Time in seconds before teleporting
+teleport-cooldown: 5
+
+# Cost of teleporting (0 to disable)
+teleport-cost: 0
+
+# Sound played when teleporting
+teleport-sound: ENTITY_ENDERMAN_TELEPORT
+
+# Effect displayed when teleporting
+teleport-effect: ENDER_SIGNAL
+
+# Custom messages
+messages:
+  create_permission: "&cYou do not have the required permissions to create warp signs!"
+  no_warp_name: "&cNo warp name set!\nPlease specify the warp name on the second line."
+  warp_created: "&aWarp sign successfully placed."
+  warp_name_taken: "&cA warp target with the same name already exists!"
+  warp_destroyed: "&aWarp destroyed."
+  target_sign_created: "&aTarget sign for warp successfully placed."
+  destroy_permission: "&cYou do not have the required permissions to destroy warp signs!"
+  invalid_item: "&cYou must use {use-item} for this warp!"
+  not_enough_item: "&cYou need {use-cost} {use-item} for this warp!"
+  warp_not_found: "&cSpecified warp does not exist!"
+  use_permission: "&cYou do not have the required permissions to use the warp sign!"
+  teleport: "&eTeleporting to {warp-name} in {time} seconds..."
+  teleport-success: "&aSuccessfully teleported to {warp-name}."
+  teleport-cancelled: "&cTeleport cancelled."
+  notify-cost: "&aYou have been charged {cost} currency for the teleportation."
+  not_permission: "&cYou do not have permission!"
+  not_enough_item: "&cYou do not have enough {use-item} x{use-cost} to create this warp sign."
