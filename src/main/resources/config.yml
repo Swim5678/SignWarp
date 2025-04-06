@@ -1,41 +1,50 @@
-# Item required to use a warp sign (none to disable)
+# 使用傳送標誌時需要的物品（設為 none 代表不需要）
 use-item: ENDER_PEARL
 
-# Number of items consumed by using a warp sign
+# 使用傳送標誌時消耗的物品數量
 use-cost: 1
 
-# 消耗的物品與數量設置
-create-item: "DIAMOND_SWORD" # 設置創建傳送門時需要消耗的物品
-create-item-cost: 1 # 設置創建傳送門時需要消耗的物品數量
-
-# Time in seconds before teleporting
+# 傳送前的冷卻時間（單位：秒）
 teleport-cooldown: 5
 
-# Cost of teleporting (0 to disable)
+# 傳送的費用（設為 0 代表不收費）
 teleport-cost: 0
 
-# Sound played when teleporting
+# 傳送時播放的音效
 teleport-sound: ENTITY_ENDERMAN_TELEPORT
 
-# Effect displayed when teleporting
+# 傳送時顯示的效果
 teleport-effect: ENDER_SIGNAL
 
-# Custom messages
+###############################################################################
+# 以下設定只影響建立 Warp Target (WPT) 標誌，WP 則免費建立
+###############################################################################
+# 建立 Warp Target 標誌所需的物品（設為 none 代表不需要）
+create-wpt-item: "DIAMOND_SWORD"
+
+# 建立 Warp Target 標誌時消耗的物品數量
+create-wpt-item-cost: 1
+
+# 建立 Warp Target 標誌的費用（設為 0 代表不收費）
+create-wpt-teleport-cost: 100
+
+###############################################################################
+# 自訂訊息
+###############################################################################
 messages:
-  create_permission: "&cYou do not have the required permissions to create warp signs!"
-  no_warp_name: "&cNo warp name set!\nPlease specify the warp name on the second line."
-  warp_created: "&aWarp sign successfully placed."
-  warp_name_taken: "&cA warp target with the same name already exists!"
-  warp_destroyed: "&aWarp destroyed."
-  target_sign_created: "&aTarget sign for warp successfully placed."
-  destroy_permission: "&cYou do not have the required permissions to destroy warp signs!"
-  invalid_item: "&cYou must use {use-item} for this warp!"
-  not_enough_item: "&cYou need {use-cost} {use-item} for this warp!"
-  warp_not_found: "&cSpecified warp does not exist!"
-  use_permission: "&cYou do not have the required permissions to use the warp sign!"
-  teleport: "&eTeleporting to {warp-name} in {time} seconds..."
-  teleport-success: "&aSuccessfully teleported to {warp-name}."
-  teleport-cancelled: "&cTeleport cancelled."
-  notify-cost: "&aYou have been charged {cost} currency for the teleportation."
-  not_permission: "&cYou do not have permission!"
-  not_enough_item: "&cYou do not have enough {use-item} x{use-cost} to create this warp sign."
+  create_permission: "&c您沒有權限建立傳送標誌！"
+  no_warp_name: "&c未設定傳送名稱！\n請在第二行設定傳送名稱。"
+  warp_created: "&a傳送標誌已成功建立。"
+  warp_name_taken: "&c已有相同名稱的傳送目標！"
+  warp_destroyed: "&a傳送已被摧毀。"
+  target_sign_created: "&a傳送目標標誌已成功建立。"
+  destroy_permission: "&c您沒有權限摧毀傳送標誌！"
+  invalid_item: "&c您必須使用 {use-item} 來啟用此傳送！"
+  not_enough_item: "&c您沒有足夠的 {use-item} x{use-cost} 來建立此傳送標誌。"
+  warp_not_found: "&c指定的傳送目標不存在！"
+  use_permission: "&c您沒有權限使用此傳送標誌！"
+  teleport: "&e正在傳送到 {warp-name}，{time} 秒後到達..."
+  teleport-success: "&a成功傳送到 {warp-name}。"
+  teleport-cancelled: "&c傳送已取消。"
+  notify-cost: "&a您已被收取 {cost} 金幣進行傳送。"
+  not_permission: "&c您沒有權限！"
