@@ -1,6 +1,6 @@
-package fr.nbstudio.signwarp;
+package com.swim.signwarp;
 
-import fr.nbstudio.signwarp.gui.WarpGui;
+import com.swim.signwarp.gui.WarpGui;
 import net.md_5.bungee.api.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;

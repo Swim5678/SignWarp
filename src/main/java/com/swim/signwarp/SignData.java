@@ -1,4 +1,4 @@
-package fr.nbstudio.signwarp;
+package com.swim.signwarp;
 
 import net.md_5.bungee.api.ChatColor;
 

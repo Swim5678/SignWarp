@@ -1,4 +1,4 @@
-package fr.nbstudio.signwarp.gui;
+package com.swim.signwarp.gui;
 
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;

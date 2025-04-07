@@ -5,7 +5,7 @@ author: SiriusB_
 website: http://discord.nb.studio/
 folia-supported: true
 api-version: '1.20'
-main: fr.nbstudio.signwarp.SignWarp
+main: com.swim.signwarp.SignWarp
 softdepend:
   - Vault
 commands:

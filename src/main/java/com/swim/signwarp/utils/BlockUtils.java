@@ -1,4 +1,4 @@
-package fr.nbstudio.signwarp.utils;
+package com.swim.signwarp.utils;
 
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;

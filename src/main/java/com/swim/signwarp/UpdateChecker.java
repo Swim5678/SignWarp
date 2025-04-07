@@ -1,4 +1,4 @@
-package fr.nbstudio.signwarp;
+package com.swim.signwarp;
 
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;

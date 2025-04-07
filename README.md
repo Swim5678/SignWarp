@@ -1,101 +1,97 @@
 # SignWarp
 
-A Bukkit plugin for teleportation using signs.
-**(Minecraft Version 1.20 - 1.21)**
+一個使用告示牌進行傳送的 Bukkit 插件
+**(Minecraft 版本 1.21.4)**
 
-SignWarp allows players to place signs to teleport between them with a simple right-click.
+SignWarp 允許玩家放置告示牌，透過簡單的右鍵點擊在它們之間進行傳送。
 
-By default, teleportation costs one ender pearl, which must be in the player's hand when interacting with the sign, but this can also be disabled in the configuration.
-## Permissions
+預設情況下，傳送會消耗一個終界珍珠（玩家在與告示牌互動時必須持有此物品），但此設定可在配置文件中禁用。
+## 權限設定
 
-- `signwarp.create` - Allow creation and destruction of warp signs (default: op)
-- `signwarp.use` - Allow usage of warp signs (default: everyone)
-- `signwarp.reload` - Allow access to reload (default: op)
-- `signwarp.admin` - Allows access to the warp management GUI (default: op)
-- `signwarp.*` - Allow access to all features (default: op)
+- `signwarp.create` - 允許創建與銷毀傳送告示牌（預設：op）
+- `signwarp.use` - 允許使用傳送告示牌（預設：所有人）
+- `signwarp.reload` -  允許重新載入配置文件（預設：op）
+- `signwarp.admin` - 允許進入傳送管理 GUI（預設：op）
+- `signwarp.*` - 允許使用所有功能（預設：op）
 
 Commands:
-- `/signwarp reload` - Reloads the configuration.
-- `/signwarp gui` - Open the warp management GUI.
-## How to Use
+- `/signwarp reload` - 重新載入配置文件。
+- `/signwarp gui` - 開啟傳送管理 GUI。
+## 使用方式
 
-First, place a sign where you want to teleport with the following content:
+首先，在你希望設置傳送點的位置放置一個告示牌，並填入以下內容：
 
-- First line: **[WarpTarget]** or **[WPT]**
-- Second line: The name you want to use
+- 第一行： **[WarpTarget]** 或 **[WPT]**
+- 第二行：你想要使用的名稱
 
-This will create a warp sign that sets the location to which a player teleports.
+這樣會建立一個傳送告示牌，該告示牌設定了玩家傳送的目的地。
 
-After creating the warp sign, create one or more warp signs from which you want to teleport to the target sign.
+建立傳送目標告示牌後，再建立一個或多個作為傳送來源的告示牌，用以傳送到目標告示牌。
+方法是放置一個告示牌並填入以下內容：
 
-This is done by placing a sign with the following content:
+- 第一行：**[Warp]** 或 **[WP]**
+- 第二行：你想要使用的名稱
 
-- First line: **[Warp]** or **[WP]**
-- Second line: The name you want to use
+**注意：目標告示牌（WarpTarget）必須先存在，再建立傳送來源告示牌！**
 
-**Note: The target sign (WarpTarget) must exist before creating the warp sign!**
+建立好兩種告示牌後，你可以使用配置中設定的 `use-item` 右鍵點擊（預設為終界珍珠）來啟動傳送。
+每次傳送將消耗配置中設定的物品數量（預設：1）。
 
-Once you have created both signs, you can right-click with the `use-item` in your hand (by default, it's an ender pearl).
-Each teleportation will cost the number of items configured in `use-cost` (default: 1).
+你可以在 config.yml 中移除 `use-item` 選項或將其設為 "none"，這樣任何物品都可以觸發傳送（即每次傳送免費）。
 
-You can remove the `use-item` option in the config.yml or set it to "none" to allow any item to be used (i.e., each warp is free per use).
 
-Alternatively, you can enable `teleport-cost` in the `config.yml` to charge players a set amount of in-game currency for each teleportation. Ensure [Vault](https://www.spigotmc.org/resources/vault.34315/) is installed on your server to use this feature.
-
-## Admin GUI
+## 管理 GUI
 
 ![Warps Admin](https://i.imgur.com/60JLVPC.gif)
 
-## Message Customization
+## 訊息自訂
 
-In the `config.yml` configuration file, you have the option to customize the messages used by the plugin. These messages are defined under the key messages and can be modified according to your preferences.
+在 `config.yml` 配置文件中，你可以自訂插件使用的訊息。 這些訊息定義在 `messages` 這個區塊下，可以依據你的喜好進行修改。
 
-**Preview :**
+**預覽：**
 
 ```yaml
 messages:
-  create_permission: "&cYou do not have the required permissions to create warp signs!"
-  no_warp_name: "&cNo warp name set!\nPlease specify the warp name on the second line."
-  warp_created: "&aWarp sign successfully placed."
-  warp_name_taken: "&cA warp target with the same name already exists!"
-  warp_destroyed: "&aWarp destroyed."
-  target_sign_created: "&aTarget sign for warp successfully placed."
-  destroy_permission: "&cYou do not have the required permissions to destroy warp signs!"
-  invalid_item: "&cYou must use {use-item} for this warp!"
-  not_enough_item: "&cYou need {use-cost} {use-item} for this warp!"
-  warp_not_found: "&cSpecified warp does not exist!"
-  use_permission: "&cYou do not have the required permissions to use the warp sign!"
-  teleport: "&eTeleporting to {warp-name} in {time} seconds..."
-  teleport-success: "&aSuccessfully teleported to {warp-name}."
-  teleport-cancelled: "&cTeleport cancelled."
-  notify-cost: "&aYou have been charged {cost} currency for the teleportation."
-  not_permission: "&cYou do not have permission!"
+  create_permission: "&c您沒有權限建立傳送標誌！"
+  no_warp_name: "&c未設定傳送名稱！\n請在第二行設定傳送名稱。"
+  warp_created: "&a傳送標誌已成功建立。"
+  warp_name_taken: "&c已有相同名稱的傳送目標！"
+  warp_destroyed: "&a傳送目標已被摧毀。"
+  target_sign_created: "&a傳送目標標誌已成功建立。"
+  destroy_permission: "&c您沒有權限摧毀傳送標誌！"
+  invalid_item: "&c您必須使用 {use-item} 來啟用此傳送！"
+  not_enough_item: "&c您沒有足夠的 {use-item} x{use-cost} 來建立此傳送標誌。"
+  warp_not_found: "&c指定的傳送目標不存在！"
+  use_permission: "&c您沒有權限使用此傳送標誌！"
+  teleport: "&e正在傳送到 {warp-name}，{time} 秒後到達..."
+  teleport-success: "&a成功傳送到 {warp-name}。"
+  teleport-cancelled: "&c傳送已取消。"
+  notify-cost: "&a您已被收取 {cost} 金幣進行傳送。"
+  not_permission: "&c您沒有權限！"
+  cooldown: "&c您必須等待 {cooldown} 秒才能再次傳送。"
   ```
 
-- `{warp-name}` : This placeholder is replaced by the name of the warp specified on the sign.
-- `{use-item}` : Used to represent the name of the item required to use the warp. For example, if the required item is an ender pearl, this placeholder will be replaced by "ENDER_PEARL".
-- `{use-cost}` : This placeholder is replaced by the number of items needed to use the warp. For example, if the cost to use the warp is 1 ender pearl, this placeholder will be replaced by "1".
-- `{cost}` : This placeholder is replaced by the amount of currency charged for teleportation.
-- `{time}` : This placeholder is replaced by the time in seconds before the teleportation is completed.
+- `{warp-name}` : 此佔位符將被替換為告示牌上指定的傳送名稱。
+- `{use-item}` : 此佔位符代表使用傳送所需的物品名稱。例如，如果需要的物品是終界珍珠，則此佔位符將被替換為 "ENDER_PEARL"。
+- `{use-cost}` : 此佔位符將被替換為使用傳送所需的物品數量。例如，如果傳送成本為 1 個終界珍珠，則此佔位符將被替換為 "1"。
+- `{cost}` : 此佔位符將被替換為傳送所收取的貨幣數量。
+- `{time}` : 此佔位符將被替換為傳送完成前的倒數秒數。
+- `{cooldown}` : 此佔位符將被替換為傳送完成後的冷卻秒數。
 
-You have the option to stylize your texts with Minecraft color codes. These codes start with the & character, followed by a letter or number representing a specific color. [More informations](https://www.digminecraft.com/lists/color_list_pc.php)
+你可以使用 Minecraft 顏色代碼來美化文字。這些代碼以 & 字符開頭，後面跟著代表特定顏色的字母或數字。 [更多資訊](https://www.digminecraft.com/lists/color_list_pc.php)
 
-## Sound and Effect Customization
+## 音效與特效自訂
 
-You can customize the sound and effect played during teleportation in the `config.yml` configuration file:
-[List Sound](https://www.digminecraft.com/lists/sound_list_pc.php) and [List Effect](https://hub.spigotmc.org/javadocs/spigot/org/bukkit/Effect.html)
+你可以在 `config.yml`  配置文件中自訂傳送時播放的音效與特效：
+參考[List Sound](https://www.digminecraft.com/lists/sound_list_pc.php) 和 [List Effect](https://hub.spigotmc.org/javadocs/spigot/org/bukkit/Effect.html)
 
-**Note : The sound and effect must be in uppercase and replace "." by "_" for the sound.**
+**注意：音效與特效需使用大寫字母，並且音效中的 "." 必須改為 "_"。**
 
-**Preview :**
+**預覽：**
 ```yaml
 teleport-sound: ENTITY_ENDERMAN_TELEPORT
 teleport-effect: ENDER_SIGNAL
 ```
-## Screenshot
+## 截圖
 
 ![Plugin Screenshot](https://i.imgur.com/vrdM5sD.png)
-
-## Statistics (bstats.org)
-
-![Stats](https://bstats.org/signatures/bukkit/SignWarps.svg)
