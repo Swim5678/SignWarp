@@ -11,6 +11,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class WarpGui {
 
@@ -22,12 +23,12 @@ public class WarpGui {
     static {
         NEXT_PAGE = new ItemStack(Material.ARROW);
         ItemMeta nextMeta = NEXT_PAGE.getItemMeta();
-        nextMeta.setDisplayName(ChatColor.GREEN + "Next Page");
+        nextMeta.setDisplayName(ChatColor.GREEN + "下一頁");
         NEXT_PAGE.setItemMeta(nextMeta);
 
         PREVIOUS_PAGE = new ItemStack(Material.ARROW);
         ItemMeta prevMeta = PREVIOUS_PAGE.getItemMeta();
-        prevMeta.setDisplayName(ChatColor.RED + "Previous Page");
+        prevMeta.setDisplayName(ChatColor.RED + "前一頁");
         PREVIOUS_PAGE.setItemMeta(prevMeta);
 
         FILLER = new ItemStack(Material.BLACK_STAINED_GLASS_PANE);
@@ -41,7 +42,7 @@ public class WarpGui {
         int totalWarps = warps.size();
         int totalPages = (int) Math.ceil((double) totalWarps / ITEMS_PER_PAGE);
 
-        Inventory gui = Bukkit.createInventory(null, 54, ChatColor.DARK_BLUE + "Warps Admin - Page " + (page + 1));
+        Inventory gui = Bukkit.createInventory(null, 54, ChatColor.DARK_BLUE + "Warps 管理 - Page " + (page + 1));
 
         int start = page * ITEMS_PER_PAGE;
         int end = Math.min(start + ITEMS_PER_PAGE, totalWarps);
@@ -52,7 +53,7 @@ public class WarpGui {
             ItemMeta warpMeta = warpItem.getItemMeta();
             warpMeta.setDisplayName(ChatColor.DARK_GREEN + warp.getName());
             List<String> lore = new ArrayList<>();
-            lore.add(ChatColor.GOLD + "World: " + warp.getLocation().getWorld().getName());
+            lore.add(ChatColor.GOLD + "世界: " + Objects.requireNonNull(warp.getLocation().getWorld()).getName());
             lore.add(ChatColor.YELLOW + "X: " + warp.getLocation().getX());
             lore.add(ChatColor.YELLOW + "Y: " + warp.getLocation().getY());
             lore.add(ChatColor.YELLOW + "Z: " + warp.getLocation().getZ());
