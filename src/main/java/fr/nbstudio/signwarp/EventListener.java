@@ -261,25 +261,40 @@ public class EventListener implements Listener {
             useItem = null;
         }
 
-        // 如果需要使用特定物品則進行檢查和扣除
+        // 如果需要使用特定物品則進行檢查與扣除（點擊時即扣除）
         if (useItem != null) {
-            Material itemInHand = event.getMaterial();
-            if (itemInHand.name().equalsIgnoreCase(useItem)) {
-                if (useCost > Objects.requireNonNull(event.getItem()).getAmount()) {
-                    String notEnoughItemMessage = config.getString("messages.not_enough_item");
-                    if (notEnoughItemMessage != null) {
-                        player.sendMessage(ChatColor.translateAlternateColorCodes('&', notEnoughItemMessage.replace("{use-cost}", String.valueOf(useCost)).replace("{use-item}", useItem)));
-                    }
-                    return;
-                }
-                pendingItemCosts.put(player.getUniqueId(), useCost);
-                teleportPlayer(player, signData.warpName);
-            } else {
+            Material requiredMaterial = Material.getMaterial(useItem.toUpperCase());
+            if (requiredMaterial == null) {
+                player.sendMessage(ChatColor.RED + "配置中指定的使用物品無效。");
+                return;
+            }
+            ItemStack handItem = event.getItem();
+            if (handItem == null || handItem.getType() != requiredMaterial) {
                 String invalidItemMessage = config.getString("messages.invalid_item");
                 if (invalidItemMessage != null) {
                     player.sendMessage(ChatColor.translateAlternateColorCodes('&', invalidItemMessage.replace("{use-item}", useItem)));
                 }
+                return;
             }
+            if (handItem.getAmount() < useCost) {
+                String notEnoughItemMessage = config.getString("messages.not_enough_item");
+                if (notEnoughItemMessage != null) {
+                    player.sendMessage(ChatColor.translateAlternateColorCodes('&',
+                            notEnoughItemMessage.replace("{use-cost}", String.valueOf(useCost)).replace("{use-item}", useItem)));
+                }
+                return;
+            }
+            // 立即扣除物品
+            int remaining = handItem.getAmount() - useCost;
+            if (remaining <= 0) {
+                player.getInventory().setItemInMainHand(null);
+            } else {
+                handItem.setAmount(remaining);
+                player.getInventory().setItemInMainHand(handItem);
+            }
+            // 記錄已扣除數量，用於取消傳送時返還
+            pendingItemCosts.put(player.getUniqueId(), useCost);
+            teleportPlayer(player, signData.warpName);
         } else {
             // 若不需物品則直接傳送
             teleportPlayer(player, signData.warpName);
@@ -336,20 +351,8 @@ public class EventListener implements Listener {
                 player.sendMessage(ChatColor.translateAlternateColorCodes('&', successMessage.replace("{warp-name}", warp.getName())));
             }
 
-            // 如果有待扣物品數量，則從主手扣除
-            Integer itemCost = pendingItemCosts.remove(playerUUID);
-            if (itemCost != null && itemCost > 0) {
-                ItemStack handItem = player.getInventory().getItemInMainHand();
-                if (handItem.getAmount() >= itemCost) {
-                    int remaining = handItem.getAmount() - itemCost;
-                    if (remaining <= 0) {
-                        player.getInventory().setItemInMainHand(null);
-                    } else {
-                        handItem.setAmount(remaining);
-                        player.getInventory().setItemInMainHand(handItem);
-                    }
-                }
-            }
+            // 傳送成功後，清除該玩家的待扣記錄（不需再扣除）
+            pendingItemCosts.remove(playerUUID);
 
             // 設置傳送完成後的冷卻，從配置讀取（單位：秒，預設5秒）
             int useCooldown = config.getInt("teleport-use-cooldown", 5);
@@ -379,7 +382,20 @@ public class EventListener implements Listener {
                     teleportTask.cancel();
                     teleportTasks.remove(playerUUID);
                     invinciblePlayers.remove(playerUUID);
-                    pendingItemCosts.remove(playerUUID);
+
+                    // 傳送取消，返還已扣除的物品
+                    if (pendingItemCosts.containsKey(playerUUID)) {
+                        String useItem = config.getString("use-item", "none");
+                        if (!"none".equalsIgnoreCase(useItem)) {
+                            Material material = Material.getMaterial(useItem.toUpperCase());
+                            if (material != null) {
+                                int cost = pendingItemCosts.get(playerUUID);
+                                player.getInventory().addItem(new ItemStack(material, cost));
+                            }
+                        }
+                        pendingItemCosts.remove(playerUUID);
+                    }
+
                     String cancelMessage = config.getString("messages.teleport-cancelled", "&cTeleportation cancelled.");
                     player.sendMessage(ChatColor.translateAlternateColorCodes('&', cancelMessage));
                 }
