@@ -1,13 +1,10 @@
 name: SignWarp
 version: '${project.version}'
 description: Warp tp plugin on signs
-author: SiriusB_
-website: http://discord.nb.studio/
-folia-supported: true
-api-version: '1.20'
+author: Swim
+website: https://verdo568.vercel.app/
+api-version: '1.21'
 main: com.swim.signwarp.SignWarp
-softdepend:
-  - Vault
 commands:
   signwarp:
     description: "Manage SignWarp commands"
