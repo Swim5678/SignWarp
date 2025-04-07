@@ -1,4 +1,4 @@
-package fr.nbstudio.signwarp.utils;
+package com.swim.signwarp.utils;
 
 import org.bukkit.Material;
 import org.bukkit.Tag;

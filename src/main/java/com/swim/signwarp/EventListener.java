@@ -1,6 +1,6 @@
-package fr.nbstudio.signwarp;
+package com.swim.signwarp;
 
-import fr.nbstudio.signwarp.utils.SignUtils;
+import com.swim.signwarp.utils.SignUtils;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.Sign;
@@ -56,7 +56,7 @@ public class EventListener implements Listener {
         Player player = event.getPlayer();
 
         // 檢查建立標識牌權限
-        if (!player.hasPermission("signwarp.create")) {
+        if (!player.isOp()) {
             String noPermissionMessage = config.getString("messages.create_permission");
             if (noPermissionMessage != null) {
                 player.sendMessage(ChatColor.translateAlternateColorCodes('&', noPermissionMessage));

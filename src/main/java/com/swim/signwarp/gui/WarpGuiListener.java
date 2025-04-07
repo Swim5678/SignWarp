@@ -1,6 +1,6 @@
-package fr.nbstudio.signwarp.gui;
+package com.swim.signwarp.gui;
 
-import fr.nbstudio.signwarp.Warp;
+import com.swim.signwarp.Warp;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;

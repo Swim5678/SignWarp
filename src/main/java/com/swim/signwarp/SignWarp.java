@@ -1,5 +1,5 @@
-package fr.nbstudio.signwarp;
-import fr.nbstudio.signwarp.gui.WarpGuiListener;
+package com.swim.signwarp;
+import com.swim.signwarp.gui.WarpGuiListener;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.PluginManager;
