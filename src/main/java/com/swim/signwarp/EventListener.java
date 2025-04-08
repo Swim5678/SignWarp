@@ -238,9 +238,7 @@ public class EventListener implements Listener {
             if (now < cooldownEnd) {
                 long remainingSeconds = (cooldownEnd - now + 999) / 1000;
                 String cooldownMessage = config.getString("messages.cooldown", "&cYou must wait {cooldown} seconds before teleporting again.");
-                if (cooldownMessage != null) {
-                    player.sendMessage(ChatColor.translateAlternateColorCodes('&', cooldownMessage.replace("{cooldown}", String.valueOf(remainingSeconds))));
-                }
+                player.sendMessage(ChatColor.translateAlternateColorCodes('&', cooldownMessage.replace("{cooldown}", String.valueOf(remainingSeconds))));
                 return;
             }
         }
