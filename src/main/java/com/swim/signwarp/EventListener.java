@@ -56,7 +56,7 @@ public class EventListener implements Listener {
         Player player = event.getPlayer();
 
         // 檢查建立標識牌權限
-        if (!player.isOp()) {
+        if (!player.hasPermission("signwarp.create")) {
             String noPermissionMessage = config.getString("messages.create_permission");
             if (noPermissionMessage != null) {
                 player.sendMessage(ChatColor.translateAlternateColorCodes('&', noPermissionMessage));
