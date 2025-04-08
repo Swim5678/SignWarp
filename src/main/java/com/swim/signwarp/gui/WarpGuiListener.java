@@ -19,7 +19,7 @@ public class WarpGuiListener implements Listener {
 
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
-        if (event.getView().getTitle().startsWith(ChatColor.DARK_BLUE + "Warps Admin")) {
+        if (event.getView().getTitle().startsWith(ChatColor.DARK_BLUE + "傳送點管理")) {
             event.setCancelled(true);
 
             ItemStack clickedItem = event.getCurrentItem();
@@ -36,13 +36,13 @@ public class WarpGuiListener implements Listener {
             }
 
             if (clickedItem.getType() == Material.ARROW) {
-                if (clickedItem.getItemMeta().getDisplayName().equals(ChatColor.GREEN + "Next Page")) {
+                if (clickedItem.getItemMeta().getDisplayName().equals(ChatColor.GREEN + "下一頁")) {
                     int totalWarps = Warp.getAll().size();
                     int totalPages = (int) Math.ceil((double) totalWarps / 45);
                     if (currentPage + 1 < totalPages) {
                         WarpGui.openWarpGui(player, currentPage + 1);
                     }
-                } else if (clickedItem.getItemMeta().getDisplayName().equals(ChatColor.RED + "Previous Page")) {
+                } else if (clickedItem.getItemMeta().getDisplayName().equals(ChatColor.RED + "上一頁")) {
                     if (currentPage > 0) {
                         WarpGui.openWarpGui(player, currentPage - 1);
                     }

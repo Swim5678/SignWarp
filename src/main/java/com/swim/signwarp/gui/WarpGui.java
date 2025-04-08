@@ -28,7 +28,7 @@ public class WarpGui {
 
         PREVIOUS_PAGE = new ItemStack(Material.ARROW);
         ItemMeta prevMeta = PREVIOUS_PAGE.getItemMeta();
-        prevMeta.setDisplayName(ChatColor.RED + "前一頁");
+        prevMeta.setDisplayName(ChatColor.RED + "上一頁");
         PREVIOUS_PAGE.setItemMeta(prevMeta);
 
         FILLER = new ItemStack(Material.BLACK_STAINED_GLASS_PANE);
@@ -42,7 +42,7 @@ public class WarpGui {
         int totalWarps = warps.size();
         int totalPages = (int) Math.ceil((double) totalWarps / ITEMS_PER_PAGE);
 
-        Inventory gui = Bukkit.createInventory(null, 54, ChatColor.DARK_BLUE + "Warps 管理 - Page " + (page + 1));
+        Inventory gui = Bukkit.createInventory(null, 54, ChatColor.DARK_BLUE + "傳送點管理 - Page " + (page + 1));
 
         int start = page * ITEMS_PER_PAGE;
         int end = Math.min(start + ITEMS_PER_PAGE, totalWarps);
