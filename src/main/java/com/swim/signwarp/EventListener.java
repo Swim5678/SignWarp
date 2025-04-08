@@ -6,6 +6,8 @@ import org.bukkit.block.Block;
 import org.bukkit.block.Sign;
 import org.bukkit.block.sign.Side;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -19,7 +21,13 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
 
 public class EventListener implements Listener {
     private final SignWarp plugin;
@@ -30,7 +38,7 @@ public class EventListener implements Listener {
     // 傳送冷卻：記錄玩家下次可傳送的時間（毫秒）
     private final HashMap<UUID, Long> cooldowns = new HashMap<>();
 
-    EventListener(SignWarp plugin) {
+    public EventListener(SignWarp plugin) {
         this.plugin = plugin;
         config = plugin.getConfig();
     }
@@ -42,6 +50,7 @@ public class EventListener implements Listener {
 
     @EventHandler
     public void onPluginEnable(PluginEnableEvent event) {
+        // 可根據需求於插件啟動時加入額外功能
     }
 
     @EventHandler
@@ -315,7 +324,8 @@ public class EventListener implements Listener {
 
         String teleportMessage = config.getString("messages.teleport");
         if (teleportMessage != null) {
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', teleportMessage.replace("{warp-name}", warp.getName()).replace("{time}", String.valueOf(teleportDelay))));
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&',
+                    teleportMessage.replace("{warp-name}", warp.getName()).replace("{time}", String.valueOf(teleportDelay))));
         }
 
         UUID playerUUID = player.getUniqueId();
@@ -329,11 +339,29 @@ public class EventListener implements Listener {
         // 加入無敵列表，防止傳送期間受傷
         invinciblePlayers.add(playerUUID);
 
-        // 排程傳送任務
+        // 在傳送前先記錄玩家周圍20格內，被牽引且牽引者為玩家的生物
+        Collection<Entity> leashedEntities = new ArrayList<>();
+        for (Entity entity : player.getNearbyEntities(20, 20, 20)) {
+            if (entity instanceof LivingEntity livingEntity) {
+                if (livingEntity.isLeashed() && livingEntity.getLeashHolder().equals(player)) {
+                    leashedEntities.add(livingEntity);
+                }
+            }
+        }
+
+        // 排程傳送任務（延遲後執行）
         BukkitTask teleportTask = Bukkit.getScheduler().runTaskLater(plugin, () -> {
             Location targetLocation = warp.getLocation();
+
+            // 傳送玩家
             player.teleport(targetLocation);
 
+            // 傳送之前記錄的所有生物
+            for (Entity entity : leashedEntities) {
+                entity.teleport(targetLocation);
+            }
+
+            // 播放傳送音效與特效
             String soundName = config.getString("teleport-sound", "ENTITY_ENDERMAN_TELEPORT");
             String effectName = config.getString("teleport-effect", "ENDER_SIGNAL");
 
