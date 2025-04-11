@@ -23,17 +23,17 @@ public class WarpGui {
     static {
         NEXT_PAGE = new ItemStack(Material.ARROW);
         ItemMeta nextMeta = NEXT_PAGE.getItemMeta();
-        nextMeta.setDisplayName(ChatColor.GREEN + "下一頁");
+        Objects.requireNonNull(nextMeta).setDisplayName(ChatColor.GREEN + "下一頁");
         NEXT_PAGE.setItemMeta(nextMeta);
 
         PREVIOUS_PAGE = new ItemStack(Material.ARROW);
         ItemMeta prevMeta = PREVIOUS_PAGE.getItemMeta();
-        prevMeta.setDisplayName(ChatColor.RED + "上一頁");
+        Objects.requireNonNull(prevMeta).setDisplayName(ChatColor.RED + "上一頁");
         PREVIOUS_PAGE.setItemMeta(prevMeta);
 
         FILLER = new ItemStack(Material.BLACK_STAINED_GLASS_PANE);
         ItemMeta fillerMeta = FILLER.getItemMeta();
-        fillerMeta.setDisplayName(" ");
+        Objects.requireNonNull(fillerMeta).setDisplayName(" ");
         FILLER.setItemMeta(fillerMeta);
     }
 
@@ -51,7 +51,7 @@ public class WarpGui {
             Warp warp = warps.get(i);
             ItemStack warpItem = new ItemStack(Material.OAK_SIGN);
             ItemMeta warpMeta = warpItem.getItemMeta();
-            warpMeta.setDisplayName(ChatColor.DARK_GREEN + warp.getName());
+            Objects.requireNonNull(warpMeta).setDisplayName(ChatColor.DARK_GREEN + warp.getName());
             List<String> lore = new ArrayList<>();
             lore.add(ChatColor.GOLD + "世界: " + Objects.requireNonNull(warp.getLocation().getWorld()).getName());
             lore.add(ChatColor.YELLOW + "X: " + warp.getLocation().getX());

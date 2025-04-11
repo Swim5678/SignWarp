@@ -10,11 +10,11 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.Objects;
+
 public class WarpGuiListener implements Listener {
-    private final JavaPlugin plugin;
 
     public WarpGuiListener(JavaPlugin plugin) {
-        this.plugin = plugin;
     }
 
     @EventHandler
@@ -36,7 +36,7 @@ public class WarpGuiListener implements Listener {
             }
 
             if (clickedItem.getType() == Material.ARROW) {
-                if (clickedItem.getItemMeta().getDisplayName().equals(ChatColor.GREEN + "下一頁")) {
+                if (Objects.requireNonNull(clickedItem.getItemMeta()).getDisplayName().equals(ChatColor.GREEN + "下一頁")) {
                     int totalWarps = Warp.getAll().size();
                     int totalPages = (int) Math.ceil((double) totalWarps / 45);
                     if (currentPage + 1 < totalPages) {
@@ -48,7 +48,7 @@ public class WarpGuiListener implements Listener {
                     }
                 }
             } else if (clickedItem.getType() == Material.OAK_SIGN) {
-                String warpName = ChatColor.stripColor(clickedItem.getItemMeta().getDisplayName());
+                String warpName = ChatColor.stripColor(Objects.requireNonNull(clickedItem.getItemMeta()).getDisplayName());
                 Warp warp = Warp.getByName(warpName);
                 if (warp != null) {
                     player.teleport(warp.getLocation());

@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 public class EventListener implements Listener {
@@ -339,7 +340,7 @@ public class EventListener implements Listener {
         // 加入無敵列表，防止傳送期間受傷
         invinciblePlayers.add(playerUUID);
 
-        // 在傳送前先記錄玩家周圍20格內，被牽引且牽引者為玩家的生物
+        // 在傳送前先記錄玩家周圍20格內，被牽引且牽引者為玩家的生物（原有功能）
         Collection<Entity> leashedEntities = new ArrayList<>();
         for (Entity entity : player.getNearbyEntities(20, 20, 20)) {
             if (entity instanceof LivingEntity livingEntity) {
@@ -349,16 +350,69 @@ public class EventListener implements Listener {
             }
         }
 
+        // ★ 新增：尋找距離玩家最近且船上有生物乘客的船（半徑5格）
+        org.bukkit.entity.Boat nearestBoat = null;
+        double minDistance = Double.MAX_VALUE;
+        Location playerLoc = player.getLocation();
+        for (Entity entity : player.getWorld().getNearbyEntities(playerLoc, 5, 5, 5)) {
+            if (entity instanceof org.bukkit.entity.Boat boat) {
+                boolean hasLivingPassenger = false;
+                for (Entity passenger : boat.getPassengers()) {
+                    if (passenger instanceof LivingEntity) {
+                        hasLivingPassenger = true;
+                        break;
+                    }
+                }
+                if (hasLivingPassenger) {
+                    double distance = boat.getLocation().distance(playerLoc);
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        nearestBoat = boat;
+                    }
+                }
+            }
+        }
+
         // 排程傳送任務（延遲後執行）
+        org.bukkit.entity.Boat finalNearestBoat = nearestBoat;
         BukkitTask teleportTask = Bukkit.getScheduler().runTaskLater(plugin, () -> {
             Location targetLocation = warp.getLocation();
 
             // 傳送玩家
             player.teleport(targetLocation);
 
-            // 傳送之前記錄的所有生物
+            // 用來紀錄所有被傳送的非玩家 LivingEntity，稍後用來關閉與恢復 AI
+            Set<LivingEntity> teleportedAIEntities = new HashSet<>();
+
+            // 傳送之前記錄的被牽引生物
             for (Entity entity : leashedEntities) {
                 entity.teleport(targetLocation);
+                if (entity instanceof LivingEntity living && !(living instanceof Player)) {
+                    teleportedAIEntities.add(living);
+                }
+            }
+
+            // ★ 新增：若找到最近符合條件的船隻，傳送該船及其乘客（不包括玩家）
+            if (finalNearestBoat != null) {
+                finalNearestBoat.teleport(targetLocation);
+                for (Entity passenger : finalNearestBoat.getPassengers()) {
+                    if (!(passenger instanceof Player) && (passenger instanceof LivingEntity)) {
+                        passenger.teleport(targetLocation);
+                        teleportedAIEntities.add((LivingEntity) passenger);
+                    }
+                }
+                // 取得船的材質資訊（依照船的木材類型）
+                Material boatMaterial = switch (finalNearestBoat.getBoatType()) {
+                    case SPRUCE -> Material.SPRUCE_BOAT;
+                    case BIRCH -> Material.BIRCH_BOAT;
+                    case JUNGLE -> Material.JUNGLE_BOAT;
+                    case ACACIA -> Material.ACACIA_BOAT;
+                    case DARK_OAK -> Material.DARK_OAK_BOAT;
+                    default -> Material.OAK_BOAT;
+                };
+                // 移除原船，並給予玩家一個相同材質的船
+                finalNearestBoat.remove();
+                player.getInventory().addItem(new ItemStack(boatMaterial, 1));
             }
 
             // 播放傳送音效與特效
@@ -369,12 +423,13 @@ public class EventListener implements Listener {
             Effect effect = Effect.valueOf(effectName);
 
             World world = targetLocation.getWorld();
-            world.playSound(targetLocation, sound, 1, 1);
+            Objects.requireNonNull(world).playSound(targetLocation, sound, 1, 1);
             world.playEffect(targetLocation, effect, 10);
 
             String successMessage = config.getString("messages.teleport-success");
             if (successMessage != null) {
-                player.sendMessage(ChatColor.translateAlternateColorCodes('&', successMessage.replace("{warp-name}", warp.getName())));
+                player.sendMessage(ChatColor.translateAlternateColorCodes('&',
+                        successMessage.replace("{warp-name}", warp.getName())));
             }
 
             // 傳送成功後，清除該玩家的待扣記錄（不需再扣除）
@@ -387,6 +442,19 @@ public class EventListener implements Listener {
             // 移除傳送任務記錄和無敵狀態
             teleportTasks.remove(playerUUID);
             invinciblePlayers.remove(playerUUID);
+
+            // ★ 新增：傳送完成後，關閉所有被傳送非玩家實體的 AI 3 秒鐘，再自動恢復
+            for (LivingEntity living : teleportedAIEntities) {
+                living.setAI(false);
+            }
+            // 3 秒（60 tick）後恢復 AI
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                for (LivingEntity living : teleportedAIEntities) {
+                    if (!living.isDead()) {
+                        living.setAI(true);
+                    }
+                }
+            }, 60L);
 
         }, teleportDelay * 20L); // 每秒20 tick
 
@@ -402,7 +470,7 @@ public class EventListener implements Listener {
             Location from = event.getFrom();
             Location to = event.getTo();
 
-            if (from.getX() != to.getX() || from.getY() != to.getY() || from.getZ() != to.getZ()) {
+            if (from.getX() != Objects.requireNonNull(to).getX() || from.getY() != to.getY() || from.getZ() != to.getZ()) {
                 BukkitTask teleportTask = teleportTasks.get(playerUUID);
                 if (teleportTask != null && !teleportTask.isCancelled()) {
                     teleportTask.cancel();
@@ -431,8 +499,7 @@ public class EventListener implements Listener {
 
     @EventHandler
     public void onEntityDamage(EntityDamageEvent event) {
-        if (event.getEntity() instanceof Player) {
-            Player player = (Player) event.getEntity();
+        if (event.getEntity() instanceof Player player) {
             if (invinciblePlayers.contains(player.getUniqueId())) {
                 event.setCancelled(true);
             }

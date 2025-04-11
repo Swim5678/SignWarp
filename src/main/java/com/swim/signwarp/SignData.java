@@ -8,7 +8,10 @@ public class SignData {
     static final String SHORT_HEADER_WARP = "[WP]";
     static final String SHORT_HEADER_TARGET_WARP = "[WPT]";
 
-    private String header;
+    static final String SMALL_SHORT_HEADER_WARP = "[wp]";
+    static final String SMALL_SHORT_HEADER_TARGET_WARP = "[wpt]";
+
+    private final String header;
     String warpName;
 
     SignData(String[] lines) {
@@ -21,11 +24,11 @@ public class SignData {
     }
 
     Boolean isWarp() {
-        return header.equalsIgnoreCase(HEADER_WARP) || header.equalsIgnoreCase(SHORT_HEADER_WARP);
+        return header.equalsIgnoreCase(HEADER_WARP) || header.equalsIgnoreCase(SHORT_HEADER_WARP) || header.equalsIgnoreCase(SMALL_SHORT_HEADER_WARP);
     }
 
     Boolean isWarpTarget() {
-        return header.equalsIgnoreCase(HEADER_TARGET) || header.equalsIgnoreCase(SHORT_HEADER_TARGET_WARP);
+        return header.equalsIgnoreCase(HEADER_TARGET) || header.equalsIgnoreCase(SHORT_HEADER_TARGET_WARP) || header.equalsIgnoreCase(SMALL_SHORT_HEADER_TARGET_WARP);
     }
 
     Boolean isWarpSign() {

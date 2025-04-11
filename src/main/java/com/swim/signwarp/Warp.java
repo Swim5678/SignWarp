@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class Warp {
     private static final String DB_URL = "jdbc:sqlite:" + JavaPlugin.getPlugin(SignWarp.class).getDataFolder() + File.separator + "warps.db";
@@ -43,7 +44,7 @@ public class Warp {
             String sql = "INSERT OR REPLACE INTO warps (name, world, x, y, z, yaw, pitch, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, COALESCE((SELECT created_at FROM warps WHERE name = ?), ?))";
             try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
                 pstmt.setString(1, warpName);
-                pstmt.setString(2, location.getWorld().getName());
+                pstmt.setString(2, Objects.requireNonNull(location.getWorld()).getName());
                 pstmt.setDouble(3, location.getX());
                 pstmt.setDouble(4, location.getY());
                 pstmt.setDouble(5, location.getZ());

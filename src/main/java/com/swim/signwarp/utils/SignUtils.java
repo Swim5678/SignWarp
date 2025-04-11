@@ -118,9 +118,7 @@ public class SignUtils {
                 return true;
             }
 
-            if (predicate.test((Sign) faceBlock.getState())) {
-                return true;
-            }
+            return predicate.test((Sign) faceBlock.getState());
         }
 
         return false;
@@ -158,11 +156,10 @@ public class SignUtils {
     public static Block getSignFromAttachedBlock(Block signBlock) {
         BlockData blockData = signBlock.getBlockData();
 
-        if (!(blockData instanceof WallSign)) {
+        if (!(blockData instanceof WallSign sign)) {
             return null;
         }
 
-        WallSign sign = (WallSign) blockData;
         return signBlock.getRelative(sign.getFacing().getOppositeFace());
     }
 
