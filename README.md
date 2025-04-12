@@ -8,15 +8,17 @@ SignWarp 允許玩家放置告示牌，透過簡單的右鍵點擊在它們之�
 預設情況下，傳送會消耗一個終界珍珠（玩家在與告示牌互動時必須持有此物品），但此設定可在配置文件中禁用。
 ## 權限設定
 
-- `signwarp.create` - 允許創建與銷毀傳送告示牌（預設：op）
+- `signwarp.create` - 允許創建傳送告示牌（預設：op）
 - `signwarp.use` - 允許使用傳送告示牌（預設：所有人）
 - `signwarp.reload` -  允許重新載入配置文件（預設：op）
 - `signwarp.admin` - 允許進入傳送管理 GUI（預設：op）
 - `signwarp.*` - 允許使用所有功能（預設：op）
+- `signwarp.destroy` - 允許銷毀傳送告示牌（預設：op）
 
 Commands:
 - `/signwarp reload` - 重新載入配置文件。
 - `/signwarp gui` - 開啟傳送管理 GUI。
+- 可縮寫 `wp`
 ## 使用方式
 
 首先，在你希望設置傳送點的位置放置一個告示牌，並填入以下內容：
