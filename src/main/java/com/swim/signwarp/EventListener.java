@@ -116,9 +116,8 @@ public class EventListener implements Listener {
         Block signBlock = event.getBlock();
 
         // 判斷告示牌的依附方塊：
-        Material supportType = null;
-        if (signBlock.getBlockData() instanceof WallSign) {
-            WallSign wallSign = (WallSign) signBlock.getBlockData();
+        Material supportType;
+        if (signBlock.getBlockData() instanceof WallSign wallSign) {
             // 對於牆上告示牌，依附方塊是告示牌背面方塊
             Block attachedBlock = signBlock.getRelative(wallSign.getFacing().getOppositeFace());
             supportType = attachedBlock.getType();
