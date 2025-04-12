@@ -1,7 +1,7 @@
 # SignWarp
 
 一個使用告示牌進行傳送的 Paper 插件
-**(Minecraft 版本 1.21.4)**
+**(Minecraft 版本 1.21+)**
 
 SignWarp 允許玩家放置告示牌，透過簡單的右鍵點擊在它們之間進行傳送。
 
