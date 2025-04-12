@@ -7,9 +7,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 public final class SignWarp extends JavaPlugin implements Listener {
 
-    private static final int RESOURCE_ID = 116195;
-    private static final String PLUGIN_URL = "https://www.spigotmc.org/resources/signwarp-teleport-using-the-signs." + RESOURCE_ID + "/";
-
     public void onEnable() {
 
         // Save default config

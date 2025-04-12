@@ -9,12 +9,13 @@ commands:
   signwarp:
     description: "Manage SignWarp commands"
     usage: "/signwarp <subcommand>"
-    aliases: ["sw"]
+    aliases: ["wp"]
 permissions:
   signwarp.*:
     children:
       - signwarp.create
       - signwarp.use
+      - signwarp.destroy
   signwarp.create:
     description: "Allows you to create warp signs"
     default: op
@@ -26,4 +27,7 @@ permissions:
     default: op
   signwarp.admin:
     description: "Allows access to the warp management GUI"
+    default: op
+  signwarp.destroy:
+    description: "Allows you to destroy warp signs"
     default: op

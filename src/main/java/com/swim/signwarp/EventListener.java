@@ -3,12 +3,14 @@ package com.swim.signwarp;
 import com.swim.signwarp.utils.SignUtils;
 import org.bukkit.*;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.block.Sign;
 import org.bukkit.block.sign.Side;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Boat;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.*;
@@ -16,28 +18,33 @@ import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.server.PluginEnableEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
+import org.bukkit.block.data.type.WallSign;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
-import java.util.UUID;
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.logging.Level;
 
 public class EventListener implements Listener {
     private final SignWarp plugin;
     private static FileConfiguration config;
+
+    // 儲存傳送任務（排程）
     private final HashMap<UUID, BukkitTask> teleportTasks = new HashMap<>();
+    // 傳送期間無敵玩家，避免在延遲中受傷
     private final HashSet<UUID> invinciblePlayers = new HashSet<>();
+    // 暫存扣除的物品數量（用於傳送取消時返還）
     private final HashMap<UUID, Integer> pendingItemCosts = new HashMap<>();
     // 傳送冷卻：記錄玩家下次可傳送的時間（毫秒）
     private final HashMap<UUID, Long> cooldowns = new HashMap<>();
+
+    // 配置檔中傳送物品檢查旗標，若無效則停用對應功能
+    private boolean validCreateWPTItem = true;
+    private boolean validUseItem = true;
 
     public EventListener(SignWarp plugin) {
         this.plugin = plugin;
@@ -49,21 +56,85 @@ public class EventListener implements Listener {
         config = plugin.getConfig();
     }
 
+    /**
+     * 當插件啟動時，檢查配置檔設定項的合法性，並啟動定時清理任務。
+     */
     @EventHandler
     public void onPluginEnable(PluginEnableEvent event) {
-        // 可根據需求於插件啟動時加入額外功能
+        // 驗證配置檔中的 create-wpt-item 與 use-item 是否設定有效
+        validateConfigItems();
+
+        // 啟動冷卻記錄的定時清理任務（例如每5分鐘清理一次過期冷卻）
+        startCooldownCleanupTask();
     }
 
+    /**
+     * 檢查配置檔中指定的物品名稱是否有效，若無效則記錄日誌並停用相關功能。
+     */
+    private void validateConfigItems() {
+        String createWPTItem = config.getString("create-wpt-item", "none");
+        if (!"none".equalsIgnoreCase(createWPTItem)) {
+            Material material = Material.getMaterial(createWPTItem.toUpperCase());
+            if (material == null) {
+                plugin.getLogger().log(Level.SEVERE, "[SignWarp] create-wpt-item 配置錯誤：無效的物品名稱 '" + createWPTItem + "'. 關聯傳送目標創建功能已停用。");
+                validCreateWPTItem = false;
+            }
+        }
+        String useItem = config.getString("use-item", "none");
+        if (!"none".equalsIgnoreCase(useItem)) {
+            Material material = Material.getMaterial(useItem.toUpperCase());
+            if (material == null) {
+                plugin.getLogger().log(Level.SEVERE, "[SignWarp] use-item 配置錯誤：無效的物品名稱 '" + useItem + "'. 關聯傳送使用功能已停用。");
+                validUseItem = false;
+            }
+        }
+    }
+
+    /**
+     * 啟動定時任務，定期從 cooldowns 中移除已過期的記錄，
+     * 減少記憶體占用（每5分鐘一次）。
+     */
+    private void startCooldownCleanupTask() {
+        BukkitTask task = plugin.getServer().getScheduler().runTaskTimer(plugin, () -> {
+            long now = System.currentTimeMillis();
+            cooldowns.values().removeIf(cooldownEnd -> cooldownEnd <= now);
+        }, 6000L, 6000L);  // 約每5分鐘執行一次 (20 tick * 60 sec * 5 = 6000 ticks)
+    }
+
+    /**
+     * 處理標識牌建立事件，包含建立傳送門(WARP)與傳送目標(WPT)的邏輯。
+     */
     @EventHandler
     public void onSignChange(SignChangeEvent event) {
         SignData signData = new SignData(event.getLines());
-
         // 僅處理符合傳送標識牌格式的標誌
         if (!signData.isWarpSign()) {
             return;
         }
 
         Player player = event.getPlayer();
+        Block signBlock = event.getBlock();
+
+        // 判斷告示牌的依附方塊：
+        Material supportType = null;
+        if (signBlock.getBlockData() instanceof WallSign) {
+            WallSign wallSign = (WallSign) signBlock.getBlockData();
+            // 對於牆上告示牌，依附方塊是告示牌背面方塊
+            Block attachedBlock = signBlock.getRelative(wallSign.getFacing().getOppositeFace());
+            supportType = attachedBlock.getType();
+        } else {  // 站立型告示牌
+            Block attachedBlock = signBlock.getRelative(BlockFace.DOWN);
+            supportType = attachedBlock.getType();
+        }
+
+        // 檢查依附的方塊是否是受重力影響的：
+        // isGravityAffected() 方法已定義，可以包含沙子、礫石、紅沙、鐵砧等
+        if (isGravityAffected(supportType)) {
+            String msg = ChatColor.RED + "無法建立在沙子、礫石等重力方塊上！";
+            player.sendMessage(msg);
+            event.setCancelled(true);
+            return;
+        }
 
         // 檢查建立標識牌權限
         if (!player.hasPermission("signwarp.create")) {
@@ -88,7 +159,7 @@ public class EventListener implements Listener {
         // 取得已存在的傳送點
         Warp existingWarp = Warp.getByName(signData.warpName);
 
-        // 如果標誌是 WARP（傳送點標誌），則不收費，只需檢查傳送點是否存在
+        // 處理 WARP 標識牌：僅做檢查（若傳送點不存在則取消）
         if (signData.isWarp()) {
             if (existingWarp == null) {
                 String warpNotFoundMessage = config.getString("messages.warp_not_found");
@@ -104,14 +175,20 @@ public class EventListener implements Listener {
                 player.sendMessage(ChatColor.translateAlternateColorCodes('&', warpCreatedMessage));
             }
         }
-        // 如果標誌是 WPT（傳送目標），則收取物品費用並建立新的傳送目標
+        // 處理 WPT 標識牌：創建新的傳送目標（需要收取物品）
         else if (signData.isWarpTarget()) {
-            // 若傳送點名稱已經存在，不允許重複建立
+            // 檢查是否允許建立傳送目標（同一傳送點不得重複建立）
             if (existingWarp != null) {
                 String warpNameTakenMessage = config.getString("messages.warp_name_taken");
                 if (warpNameTakenMessage != null) {
                     player.sendMessage(ChatColor.translateAlternateColorCodes('&', warpNameTakenMessage));
                 }
+                event.setCancelled(true);
+                return;
+            }
+            // 當配置中設定無效時，不允許建立傳送目標
+            if (!validCreateWPTItem) {
+                player.sendMessage(ChatColor.RED + "建立傳送目標功能暫停，請聯繫管理員。");
                 event.setCancelled(true);
                 return;
             }
@@ -121,7 +198,7 @@ public class EventListener implements Listener {
             if (!"none".equalsIgnoreCase(createWPTItem)) {
                 Material material = Material.getMaterial(createWPTItem.toUpperCase());
                 if (material == null) {
-                    player.sendMessage(ChatColor.RED + "配置中指定的物品無效，無法建立 WPT。");
+                    player.sendMessage(ChatColor.RED + "配置中指定的物品無效，無法建立傳送目標。");
                     event.setCancelled(true);
                     return;
                 }
@@ -146,8 +223,8 @@ public class EventListener implements Listener {
                     player.getInventory().setItemInMainHand(itemInHand);
                 }
             }
-            // 建立新的傳送目標
-            String currentDateTime = java.time.LocalDateTime.now().toString();
+            // 建立傳送目標
+            String currentDateTime = LocalDateTime.now().toString();
             Warp warp = new Warp(signData.warpName, player.getLocation(), currentDateTime);
             warp.save();
             event.setLine(0, ChatColor.BLUE + SignData.HEADER_TARGET);
@@ -158,6 +235,10 @@ public class EventListener implements Listener {
         }
     }
 
+    /**
+     * 處理破壞標識牌事件。
+     * 安全性提升：要求玩家擁有 signwarp.destroy 權限才能破壞傳送標識牌。
+     */
     @EventHandler
     public void onBlockBreak(BlockBreakEvent event) {
         Block block = event.getBlock();
@@ -178,17 +259,15 @@ public class EventListener implements Listener {
 
         SignData signData = new SignData(signBlock.getSide(Side.FRONT).getLines());
 
-        if (!signData.isWarpTarget()) {
-            return;
-        }
-
-        if (!signData.isValidWarpName()) {
+        // 僅對傳送目標進行破壞邏輯處理（WPT）
+        if (!signData.isWarpTarget() || !signData.isValidWarpName()) {
             return;
         }
 
         Player player = event.getPlayer();
 
-        if (!player.hasPermission("signwarp.create")) {
+        // 檢查專用破壞權限 (signwarp.destroy)
+        if (!player.hasPermission("signwarp.destroy")) {
             String noPermissionMessage = config.getString("messages.destroy_permission");
             if (noPermissionMessage != null) {
                 player.sendMessage(ChatColor.translateAlternateColorCodes('&', noPermissionMessage));
@@ -205,9 +284,15 @@ public class EventListener implements Listener {
 
         warp.remove();
 
-        player.sendMessage(ChatColor.translateAlternateColorCodes('&', Objects.requireNonNull(config.getString("messages.warp_destroyed"))));
+        String destroyedMsg = config.getString("messages.warp_destroyed");
+        if (destroyedMsg != null) {
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&', destroyedMsg));
+        }
     }
 
+    /**
+     * 處理玩家點擊標識牌傳送事件。
+     */
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
         if (event.getAction() != Action.RIGHT_CLICK_BLOCK) {
@@ -215,25 +300,24 @@ public class EventListener implements Listener {
         }
 
         Block block = event.getClickedBlock();
-
         if (block == null) {
             return;
         }
 
         Sign signBlock = SignUtils.getSignFromBlock(block);
-
         if (signBlock == null) {
             return;
         }
 
         SignData signData = new SignData(signBlock.getSide(Side.FRONT).getLines());
 
-        // 標識牌自動鎖定
+        // 自動鎖定標識牌
         if (signData.isWarpSign() && !signBlock.isWaxed()) {
             signBlock.setWaxed(true);
             signBlock.update();
         }
 
+        // 若非傳送標識牌或傳送目標名稱不合法則忽略
         if (!signData.isWarp() || !signData.isValidWarpName()) {
             return;
         }
@@ -241,7 +325,7 @@ public class EventListener implements Listener {
         Player player = event.getPlayer();
         UUID playerId = player.getUniqueId();
 
-        // 傳送冷卻檢查
+        // 檢查傳送冷卻
         long now = System.currentTimeMillis();
         if (cooldowns.containsKey(playerId)) {
             long cooldownEnd = cooldowns.get(playerId);
@@ -253,7 +337,7 @@ public class EventListener implements Listener {
             }
         }
 
-        // 檢查使用傳送權限
+        // 檢查傳送使用權限
         if (!player.hasPermission("signwarp.use")) {
             String noPermissionMessage = config.getString("messages.use_permission");
             if (noPermissionMessage != null) {
@@ -262,14 +346,19 @@ public class EventListener implements Listener {
             return;
         }
 
+        // 當配置中使用物品無效時，停用扣除物品邏輯
         String useItem = config.getString("use-item", "none");
         int useCost = config.getInt("use-cost", 0);
-
         if ("none".equalsIgnoreCase(useItem)) {
             useItem = null;
         }
+        if (useItem != null && !validUseItem) {
+            // 提示玩家該功能暫停
+            player.sendMessage(ChatColor.RED + "傳送使用功能暫停，請聯繫管理員。");
+            return;
+        }
 
-        // 如果需要使用特定物品則進行檢查與扣除（點擊時即扣除）
+        // 如果需要扣除物品則做檢查與扣除
         if (useItem != null) {
             Material requiredMaterial = Material.getMaterial(useItem.toUpperCase());
             if (requiredMaterial == null) {
@@ -300,19 +389,30 @@ public class EventListener implements Listener {
                 handItem.setAmount(remaining);
                 player.getInventory().setItemInMainHand(handItem);
             }
-            // 記錄已扣除數量，用於取消傳送時返還
+            // 記錄扣除數量，用於傳送取消時返還
             pendingItemCosts.put(player.getUniqueId(), useCost);
-            teleportPlayer(player, signData.warpName);
-        } else {
-            // 若不需物品則直接傳送
-            teleportPlayer(player, signData.warpName);
         }
+
+        // 呼叫傳送方法
+        teleportPlayer(player, signData.warpName);
     }
 
+    /**
+     * 處理傳送邏輯：
+     * - 檢查傳送目標是否存在，若不存在則記錄日誌並通知玩家。
+     * - 設定傳送延遲、無敵狀態、牽引生物傳送及附帶特效（音效、粒子）。
+     * - 若附近有符合條件的船隻，則傳送該船並返還給玩家。
+     * - 傳送結束後自動設定冷卻、恢復 AI 並清理相關記錄。
+     *
+     * @param player   傳送玩家
+     * @param warpName 傳送點名稱
+     */
     private void teleportPlayer(Player player, String warpName) {
         Warp warp = Warp.getByName(warpName);
-
         if (warp == null) {
+            // 傳送目標不存在，記錄詳細錯誤日誌
+            plugin.getLogger().log(Level.WARNING, "[SignWarp] 傳送失敗：玩家 " + player.getName()
+                    + " 試圖傳送至不存在的傳送點 '" + warpName + "'.");
             String warpNotFoundMessage = config.getString("messages.warp_not_found");
             if (warpNotFoundMessage != null) {
                 player.sendMessage(ChatColor.translateAlternateColorCodes('&', warpNotFoundMessage));
@@ -322,7 +422,6 @@ public class EventListener implements Listener {
 
         // 讀取傳送延遲（單位：秒）
         int teleportDelay = config.getInt("teleport-delay", 5);
-
         String teleportMessage = config.getString("messages.teleport");
         if (teleportMessage != null) {
             player.sendMessage(ChatColor.translateAlternateColorCodes('&',
@@ -331,7 +430,7 @@ public class EventListener implements Listener {
 
         UUID playerUUID = player.getUniqueId();
 
-        // 取消之前的傳送任務（若有）
+        // 取消玩家之前的傳送任務（若有）
         BukkitTask previousTask = teleportTasks.get(playerUUID);
         if (previousTask != null) {
             previousTask.cancel();
@@ -340,9 +439,9 @@ public class EventListener implements Listener {
         // 加入無敵列表，防止傳送期間受傷
         invinciblePlayers.add(playerUUID);
 
-        // 在傳送前先記錄玩家周圍20格內，被牽引且牽引者為玩家的生物（原有功能）
+        // 記錄玩家附近12格內，被牽引且牽引者為玩家的生物
         Collection<Entity> leashedEntities = new ArrayList<>();
-        for (Entity entity : player.getNearbyEntities(20, 20, 20)) {
+        for (Entity entity : player.getNearbyEntities(12, 12, 12)) {
             if (entity instanceof LivingEntity livingEntity) {
                 if (livingEntity.isLeashed() && livingEntity.getLeashHolder().equals(player)) {
                     leashedEntities.add(livingEntity);
@@ -350,12 +449,12 @@ public class EventListener implements Listener {
             }
         }
 
-        // ★ 新增：尋找距離玩家最近且船上有生物乘客的船（半徑5格）
-        org.bukkit.entity.Boat nearestBoat = null;
+        // 尋找距離玩家最近，且船上有生物乘客的船（半徑5格）
+        Boat nearestBoat = null;
         double minDistance = Double.MAX_VALUE;
         Location playerLoc = player.getLocation();
         for (Entity entity : player.getWorld().getNearbyEntities(playerLoc, 5, 5, 5)) {
-            if (entity instanceof org.bukkit.entity.Boat boat) {
+            if (entity instanceof Boat boat) {
                 boolean hasLivingPassenger = false;
                 for (Entity passenger : boat.getPassengers()) {
                     if (passenger instanceof LivingEntity) {
@@ -373,18 +472,16 @@ public class EventListener implements Listener {
             }
         }
 
+        Boat finalNearestBoat = nearestBoat;
         // 排程傳送任務（延遲後執行）
-        org.bukkit.entity.Boat finalNearestBoat = nearestBoat;
         BukkitTask teleportTask = Bukkit.getScheduler().runTaskLater(plugin, () -> {
             Location targetLocation = warp.getLocation();
-
             // 傳送玩家
             player.teleport(targetLocation);
 
-            // 用來紀錄所有被傳送的非玩家 LivingEntity，稍後用來關閉與恢復 AI
+            // 記錄所有傳送的非玩家 LivingEntity，之後用於暫停及恢復 AI
             Set<LivingEntity> teleportedAIEntities = new HashSet<>();
-
-            // 傳送之前記錄的被牽引生物
+            // 傳送被牽引生物
             for (Entity entity : leashedEntities) {
                 entity.teleport(targetLocation);
                 if (entity instanceof LivingEntity living && !(living instanceof Player)) {
@@ -392,16 +489,16 @@ public class EventListener implements Listener {
                 }
             }
 
-            // ★ 新增：若找到最近符合條件的船隻，傳送該船及其乘客（不包括玩家）
+            // 處理最近符合條件的船隻：傳送船及其乘客，返還一個相同材質船給玩家
             if (finalNearestBoat != null) {
                 finalNearestBoat.teleport(targetLocation);
                 for (Entity passenger : finalNearestBoat.getPassengers()) {
-                    if (!(passenger instanceof Player) && (passenger instanceof LivingEntity)) {
+                    if (!(passenger instanceof Player) && passenger instanceof LivingEntity) {
                         passenger.teleport(targetLocation);
                         teleportedAIEntities.add((LivingEntity) passenger);
                     }
                 }
-                // 取得船的材質資訊（依照船的木材類型）
+                // 依照船的木材類型取得對應材質
                 Material boatMaterial = switch (finalNearestBoat.getBoatType()) {
                     case SPRUCE -> Material.SPRUCE_BOAT;
                     case BIRCH -> Material.BIRCH_BOAT;
@@ -410,7 +507,7 @@ public class EventListener implements Listener {
                     case DARK_OAK -> Material.DARK_OAK_BOAT;
                     default -> Material.OAK_BOAT;
                 };
-                // 移除原船，並給予玩家一個相同材質的船
+                // 移除原船，並給予玩家一個新的船
                 finalNearestBoat.remove();
                 player.getInventory().addItem(new ItemStack(boatMaterial, 1));
             }
@@ -418,13 +515,13 @@ public class EventListener implements Listener {
             // 播放傳送音效與特效
             String soundName = config.getString("teleport-sound", "ENTITY_ENDERMAN_TELEPORT");
             String effectName = config.getString("teleport-effect", "ENDER_SIGNAL");
-
             Sound sound = Sound.valueOf(soundName);
             Effect effect = Effect.valueOf(effectName);
-
             World world = targetLocation.getWorld();
-            Objects.requireNonNull(world).playSound(targetLocation, sound, 1, 1);
-            world.playEffect(targetLocation, effect, 10);
+            if (world != null) {
+                world.playSound(targetLocation, sound, 1, 1);
+                world.playEffect(targetLocation, effect, 10);
+            }
 
             String successMessage = config.getString("messages.teleport-success");
             if (successMessage != null) {
@@ -432,35 +529,37 @@ public class EventListener implements Listener {
                         successMessage.replace("{warp-name}", warp.getName())));
             }
 
-            // 傳送成功後，清除該玩家的待扣記錄（不需再扣除）
+            // 傳送成功後，清除該玩家扣除物品記錄
             pendingItemCosts.remove(playerUUID);
 
-            // 設置傳送完成後的冷卻，從配置讀取（單位：秒，預設5秒）
+            // 設定傳送使用冷卻，從配置中讀取（單位：秒）
             int useCooldown = config.getInt("teleport-use-cooldown", 5);
             cooldowns.put(playerUUID, System.currentTimeMillis() + useCooldown * 1000L);
 
-            // 移除傳送任務記錄和無敵狀態
+            // 清除傳送任務記錄與解除無敵狀態
             teleportTasks.remove(playerUUID);
             invinciblePlayers.remove(playerUUID);
 
-            // ★ 新增：傳送完成後，關閉所有被傳送非玩家實體的 AI 3 秒鐘，再自動恢復
+            // 傳送後，暫停所有被傳送非玩家實體的 AI 3 秒鐘，之後自動恢復
             for (LivingEntity living : teleportedAIEntities) {
                 living.setAI(false);
             }
-            // 3 秒（60 tick）後恢復 AI
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 for (LivingEntity living : teleportedAIEntities) {
                     if (!living.isDead()) {
                         living.setAI(true);
                     }
                 }
-            }, 60L);
-
-        }, teleportDelay * 20L); // 每秒20 tick
+            }, 60L); // 3秒 (20 tick x 3 = 60 tick)
+        }, teleportDelay * 20L); // 延遲時間轉為 tick
 
         teleportTasks.put(playerUUID, teleportTask);
     }
 
+    /**
+     * 玩家移動時若尚在傳送延遲階段內，則取消傳送。
+     * 並返還已扣除的物品，同時移除相關記錄。
+     */
     @EventHandler
     public void onPlayerMove(PlayerMoveEvent event) {
         Player player = event.getPlayer();
@@ -469,7 +568,6 @@ public class EventListener implements Listener {
         if (teleportTasks.containsKey(playerUUID)) {
             Location from = event.getFrom();
             Location to = event.getTo();
-
             if (from.getX() != Objects.requireNonNull(to).getX() || from.getY() != to.getY() || from.getZ() != to.getZ()) {
                 BukkitTask teleportTask = teleportTasks.get(playerUUID);
                 if (teleportTask != null && !teleportTask.isCancelled()) {
@@ -477,7 +575,7 @@ public class EventListener implements Listener {
                     teleportTasks.remove(playerUUID);
                     invinciblePlayers.remove(playerUUID);
 
-                    // 傳送取消，返還已扣除的物品
+                    // 傳送取消時返還扣除的物品
                     if (pendingItemCosts.containsKey(playerUUID)) {
                         String useItem = config.getString("use-item", "none");
                         if (!"none".equalsIgnoreCase(useItem)) {
@@ -497,6 +595,9 @@ public class EventListener implements Listener {
         }
     }
 
+    /**
+     * 取消傳送期間對玩家造成的傷害
+     */
     @EventHandler
     public void onEntityDamage(EntityDamageEvent event) {
         if (event.getEntity() instanceof Player player) {
@@ -506,6 +607,9 @@ public class EventListener implements Listener {
         }
     }
 
+    /**
+     * 當活塞推動時，若涉及傳送標識牌則取消該事件。
+     */
     @EventHandler
     public void onBlockPistonExtend(BlockPistonExtendEvent event) {
         if (hasBlockWarpSign(event.getBlocks())) {
@@ -534,14 +638,71 @@ public class EventListener implements Listener {
         }
     }
 
+    /**
+     * 防止傳送告示牌依附的方塊受重力影響
+     */
+    @EventHandler
+    public void onBlockPhysics(BlockPhysicsEvent event) {
+        Block block = event.getBlock();
+        if (isGravityAffected(block.getType())) {
+            // 檢查是否有牆上的傳送告示牌依附
+            if (hasBlockWarpSign(block)) {
+                event.setCancelled(true);
+                return;
+            }
+            // 檢查上方是否有站立的傳送告示牌
+            Block above = block.getRelative(BlockFace.UP);
+            Sign signAbove = SignUtils.getSignFromBlock(above);
+            if (signAbove != null && isWarpSign(signAbove)) {
+                event.setCancelled(true);
+            }
+        }
+    }
+
+    /**
+     * 檢查方塊類型是否受重力影響
+     */
+    private boolean isGravityAffected(Material type) {
+        return type == Material.SAND || type == Material.GRAVEL || type == Material.ANVIL || type == Material.RED_SAND;
+        // 可根據 Minecraft 版本添加更多受重力影響的方塊，如 CONCRETE_POWDER
+    }
+
+    /**
+     * 當玩家離線時，清理該玩家相關的傳送記錄與冷卻、無敵、扣除物品等資訊
+     */
+    @EventHandler
+    public void onPlayerQuit(PlayerQuitEvent event) {
+        UUID playerId = event.getPlayer().getUniqueId();
+        // 取消尚未執行的傳送任務
+        if (teleportTasks.containsKey(playerId)) {
+            BukkitTask task = teleportTasks.get(playerId);
+            if (task != null && !task.isCancelled()) {
+                task.cancel();
+            }
+            teleportTasks.remove(playerId);
+        }
+        invinciblePlayers.remove(playerId);
+        pendingItemCosts.remove(playerId);
+        cooldowns.remove(playerId);
+    }
+
+    /**
+     * 輔助方法：判斷單一區塊是否含有傳送標識牌
+     */
     private boolean hasBlockWarpSign(Block block) {
         return SignUtils.hasBlockSign(block, this::isWarpSign);
     }
 
+    /**
+     * 輔助方法：判斷區塊列表中是否含有傳送標識牌
+     */
     private boolean hasBlockWarpSign(List<Block> blocks) {
         return SignUtils.hasBlockSign(blocks, this::isWarpSign);
     }
 
+    /**
+     * 輔助方法：檢查某一 Sign 是否為傳送標識牌
+     */
     private boolean isWarpSign(Sign signBlock) {
         SignData signData = new SignData(signBlock.getSide(Side.FRONT).getLines());
         return signData.isWarpSign();

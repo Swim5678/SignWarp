@@ -23,7 +23,7 @@ public class SWCommand implements CommandExecutor, TabCompleter {
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String[] args) {
         if (args.length == 0) {
-            sender.sendMessage("Usage: /signwarp <gui|reload>");
+            sender.sendMessage("Usage: /signwarp <gui/reload>");
             return true;
         }
 
@@ -44,14 +44,14 @@ public class SWCommand implements CommandExecutor, TabCompleter {
             if (sender.hasPermission("signwarp.reload")) {
                 plugin.reloadConfig();
                 EventListener.updateConfig(plugin);
-                sender.sendMessage(ChatColor.GREEN + "Configuration reloaded.");
+                sender.sendMessage(ChatColor.GREEN + "配置已重新載入");
             } else {
                 sender.sendMessage(ChatColor.translateAlternateColorCodes('&', plugin.getConfig().getString("messages.not_permission", "You don't have permission to use this command.")));
             }
             return true;
         }
 
-        sender.sendMessage("Unknown subcommand. Usage: /signwarp <gui|reload>");
+        sender.sendMessage("Unknown subcommand. Usage: /signwarp <gui/reload>");
         return true;
     }
 
