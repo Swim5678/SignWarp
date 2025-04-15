@@ -29,7 +29,8 @@ jobs:
         cache: maven
     - name: Build with Maven
       run: mvn -B package --file pom.xml
-    - uses: actions/upload-artifact@v4
+    - name: 📤 Upload SignWarp.jar 
+      uses: actions/upload-artifact@v4
       with:
        name: SignWarp
        path: staging
