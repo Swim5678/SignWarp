@@ -8,10 +8,7 @@ import org.bukkit.block.Sign;
 import org.bukkit.block.data.type.WallSign;
 import org.bukkit.block.sign.Side;
 import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.entity.Boat;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.LivingEntity;
-import org.bukkit.entity.Player;
+import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.*;
@@ -487,7 +484,10 @@ public class EventListener implements Listener {
                     teleportedAIEntities.add(living);
                 }
             }
-
+            if (player.getVehicle() instanceof Horse horse) {
+                horse.teleport(targetLocation);
+                teleportedAIEntities.add(horse);
+            }
             // 處理最近符合條件的船隻：傳送船及其乘客，返還一個相同材質船給玩家
             if (finalNearestBoat != null) {
                 finalNearestBoat.teleport(targetLocation);
