@@ -397,9 +397,10 @@ public class EventListener implements Listener {
      * 處理傳送邏輯：
      * - 檢查傳送目標是否存在，若不存在則記錄日誌並通知玩家。
      * - 設定傳送延遲、無敵狀態、牽引生物傳送及附帶特效（音效、粒子）。
-     * - 若附近有符合條件的船隻，則傳送該船並返還給玩家。
-     * - 傳送期間增加對玩家騎乘馬匹的支援：直接先傳送玩家，再傳送馬匹，
-     *   最後復原騎乘狀態（若玩家騎乘的載具為 Horse）。
+     * - 若附近有符合條件的船隻，則採用改良邏輯：
+     *   先傳送點擊告示牌的玩家，再傳送該船，並將該船中所有非玩家乘客
+     *   臨時解除乘載關係後進行單獨傳送，待所有實體到達後再恢復被載狀態。
+     * - 傳送期間同時支持玩家騎乘馬匹，先傳送玩家，再傳送馬匹並復原騎乘狀態。
      * - 傳送結束後自動設定冷卻、恢復 AI 並清理相關記錄。
      *
      * @param player   傳送玩家
@@ -456,14 +457,15 @@ public class EventListener implements Listener {
         Location playerLoc = player.getLocation();
         for (Entity entity : player.getWorld().getNearbyEntities(playerLoc, 5, 5, 5)) {
             if (entity instanceof Boat boat) {
-                boolean hasLivingPassenger = false;
+                // 只處理有乘客的船，且不包含玩家乘客
+                boolean hasNonPlayerPassenger = false;
                 for (Entity passenger : boat.getPassengers()) {
-                    if (passenger instanceof LivingEntity) {
-                        hasLivingPassenger = true;
+                    if (!(passenger instanceof Player)) {
+                        hasNonPlayerPassenger = true;
                         break;
                     }
                 }
-                if (hasLivingPassenger) {
+                if (hasNonPlayerPassenger) {
                     double distance = boat.getLocation().distance(playerLoc);
                     if (distance < minDistance) {
                         minDistance = distance;
@@ -481,44 +483,46 @@ public class EventListener implements Listener {
             // 先傳送玩家
             player.teleport(targetLocation);
 
-            // 如果玩家騎乘了馬匹，稍後再傳送馬匹並恢復騎乘狀態
+            // 如果玩家騎乘了馬匹，傳送馬匹並恢復騎乘狀態
             if (playerHorse != null && !playerHorse.isDead()) {
-                // 傳送馬匹
                 playerHorse.teleport(targetLocation);
-                // 恢復騎乘（如果玩家並非已自動附加，可用以下方式重新附加）
                 if (!playerHorse.getPassengers().contains(player)) {
                     playerHorse.addPassenger(player);
                 }
             }
 
-            // 記錄所有傳送的非玩家 LivingEntity，之後用於暫停及恢復 AI
-            Set<LivingEntity> teleportedAIEntities = new HashSet<>();
+            // 處理附近船隻傳送支援
+            if (finalNearestBoat != null) {
+                // 先將船上所有非玩家乘客記錄下來
+                List<Entity> nonPlayerPassengers = new ArrayList<>();
+                for (Entity passenger : finalNearestBoat.getPassengers()) {
+                    if (!(passenger instanceof Player)) {
+                        nonPlayerPassengers.add(passenger);
+                    }
+                }
+                // 臨時解除非玩家乘客的載具關係
+                for (Entity passenger : nonPlayerPassengers) {
+                    finalNearestBoat.removePassenger(passenger);
+                }
+                // 傳送船隻
+                finalNearestBoat.teleport(targetLocation);
+                // 傳送所有先前解除的乘客
+                for (Entity passenger : nonPlayerPassengers) {
+                    passenger.teleport(targetLocation);
+                }
+                // 恢復非玩家乘客與船隻的載具關係
+                for (Entity passenger : nonPlayerPassengers) {
+                    finalNearestBoat.addPassenger(passenger);
+                }
+            }
+
             // 傳送被牽引生物
+            Set<LivingEntity> teleportedAIEntities = new HashSet<>();
             for (Entity entity : leashedEntities) {
                 entity.teleport(targetLocation);
                 if (entity instanceof LivingEntity living && !(living instanceof Player)) {
                     teleportedAIEntities.add(living);
                 }
-            }
-            // 處理最近符合條件的船隻：傳送船及其乘客，返還一個相同材質船給玩家
-            if (finalNearestBoat != null) {
-                finalNearestBoat.teleport(targetLocation);
-                for (Entity passenger : finalNearestBoat.getPassengers()) {
-                    if (!(passenger instanceof Player) && passenger instanceof LivingEntity) {
-                        passenger.teleport(targetLocation);
-                        teleportedAIEntities.add((LivingEntity) passenger);
-                    }
-                }
-                Material boatMaterial = switch (finalNearestBoat.getBoatType()) {
-                    case SPRUCE -> Material.SPRUCE_BOAT;
-                    case BIRCH -> Material.BIRCH_BOAT;
-                    case JUNGLE -> Material.JUNGLE_BOAT;
-                    case ACACIA -> Material.ACACIA_BOAT;
-                    case DARK_OAK -> Material.DARK_OAK_BOAT;
-                    default -> Material.OAK_BOAT;
-                };
-                finalNearestBoat.remove();
-                player.getInventory().addItem(new ItemStack(boatMaterial, 1));
             }
 
             // 播放傳送音效與特效
