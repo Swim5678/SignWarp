@@ -397,7 +397,9 @@ public class EventListener implements Listener {
      * 處理傳送邏輯：
      * - 檢查傳送目標是否存在，若不存在則記錄日誌並通知玩家。
      * - 設定傳送延遲、無敵狀態、牽引生物傳送及附帶特效（音效、粒子）。
-     * - 當玩家處於載具騎乘狀態時，直接傳送該載具以保持騎乘狀態。
+     * - 若附近有符合條件的船隻，則傳送該船並返還給玩家。
+     * - 傳送期間增加對玩家騎乘馬匹的支援：直接先傳送玩家，再傳送馬匹，
+     *   最後復原騎乘狀態（若玩家騎乘的載具為 Horse）。
      * - 傳送結束後自動設定冷卻、恢復 AI 並清理相關記錄。
      *
      * @param player   傳送玩家
@@ -437,7 +439,7 @@ public class EventListener implements Listener {
 
         // 記錄玩家附近12格內，被牽引且牽引者為玩家的生物
         Collection<Entity> leashedEntities = new ArrayList<>();
-        for (Entity entity : player.getNearbyEntities(11, 11, 11)) {
+        for (Entity entity : player.getNearbyEntities(12, 12, 12)) {
             if (entity instanceof LivingEntity livingEntity) {
                 if (livingEntity.isLeashed() && livingEntity.getLeashHolder().equals(player)) {
                     leashedEntities.add(livingEntity);
@@ -445,9 +447,8 @@ public class EventListener implements Listener {
             }
         }
 
-        // 取得玩家所騎乘的載具（如果有的話）
-        // 若玩家正在騎乘馬匹或其他載具，此處不再脫離載具，而是保留騎乘狀態
-        final Entity ridingVehicle = player.getVehicle();
+        // 處理玩家騎乘的馬匹支援：若玩家的載具為 Horse 類型，直接取得該馬參考（不強制下馬）
+        final Horse playerHorse = (player.getVehicle() instanceof Horse) ? (Horse) player.getVehicle() : null;
 
         // 尋找距離玩家最近，且船上有生物乘客的船（半徑5格）
         Boat nearestBoat = null;
@@ -477,15 +478,22 @@ public class EventListener implements Listener {
         BukkitTask teleportTask = Bukkit.getScheduler().runTaskLater(plugin, () -> {
             Location targetLocation = warp.getLocation();
 
-            // 若玩家正騎乘載具，則直接傳送該載具以保持騎乘狀態
-            if (ridingVehicle != null) {
-                ridingVehicle.teleport(targetLocation);
-            } else {
-                player.teleport(targetLocation);
+            // 先傳送玩家
+            player.teleport(targetLocation);
+
+            // 如果玩家騎乘了馬匹，稍後再傳送馬匹並恢復騎乘狀態
+            if (playerHorse != null && !playerHorse.isDead()) {
+                // 傳送馬匹
+                playerHorse.teleport(targetLocation);
+                // 恢復騎乘（如果玩家並非已自動附加，可用以下方式重新附加）
+                if (!playerHorse.getPassengers().contains(player)) {
+                    playerHorse.addPassenger(player);
+                }
             }
 
-            // 傳送被牽引生物
+            // 記錄所有傳送的非玩家 LivingEntity，之後用於暫停及恢復 AI
             Set<LivingEntity> teleportedAIEntities = new HashSet<>();
+            // 傳送被牽引生物
             for (Entity entity : leashedEntities) {
                 entity.teleport(targetLocation);
                 if (entity instanceof LivingEntity living && !(living instanceof Player)) {
