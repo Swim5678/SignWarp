@@ -398,6 +398,7 @@ public class EventListener implements Listener {
      * - 檢查傳送目標是否存在，若不存在則記錄日誌並通知玩家。
      * - 設定傳送延遲、無敵狀態、牽引生物傳送及附帶特效（音效、粒子）。
      * - 若附近有符合條件的船隻，則傳送該船並返還給玩家。
+     * - 傳送期間增加對玩家騎乘馬匹的支持，確保馬匹與玩家同步傳送。
      * - 傳送結束後自動設定冷卻、恢復 AI 並清理相關記錄。
      *
      * @param player   傳送玩家
@@ -445,6 +446,16 @@ public class EventListener implements Listener {
             }
         }
 
+        // 處理玩家騎乘的馬匹支援
+        // 若玩家的載具為 Horse 類型，先記錄並讓玩家下馬
+        final Horse playerHorse;
+        if (player.getVehicle() instanceof Horse horse) {
+            playerHorse = horse;
+            player.leaveVehicle();
+        } else {
+            playerHorse = null;
+        }
+
         // 尋找距離玩家最近，且船上有生物乘客的船（半徑5格）
         Boat nearestBoat = null;
         double minDistance = Double.MAX_VALUE;
@@ -472,8 +483,19 @@ public class EventListener implements Listener {
         // 排程傳送任務（延遲後執行）
         BukkitTask teleportTask = Bukkit.getScheduler().runTaskLater(plugin, () -> {
             Location targetLocation = warp.getLocation();
+
+            // 如果玩家騎乘了馬匹，先傳送馬匹，再傳送玩家，最後再附加玩家到馬匹上
+            if (playerHorse != null && !playerHorse.isDead()) {
+                playerHorse.teleport(targetLocation);
+            }
+
             // 傳送玩家
             player.teleport(targetLocation);
+
+            // 若有馬匹，再次附加玩家，確保騎乘關係保留
+            if (playerHorse != null && !playerHorse.isDead()) {
+                playerHorse.addPassenger(player);
+            }
 
             // 記錄所有傳送的非玩家 LivingEntity，之後用於暫停及恢復 AI
             Set<LivingEntity> teleportedAIEntities = new HashSet<>();
@@ -484,10 +506,6 @@ public class EventListener implements Listener {
                     teleportedAIEntities.add(living);
                 }
             }
-            if (player.getVehicle() instanceof Horse horse) {
-                horse.teleport(targetLocation);
-                teleportedAIEntities.add(horse);
-            }
             // 處理最近符合條件的船隻：傳送船及其乘客，返還一個相同材質船給玩家
             if (finalNearestBoat != null) {
                 finalNearestBoat.teleport(targetLocation);
@@ -497,7 +515,6 @@ public class EventListener implements Listener {
                         teleportedAIEntities.add((LivingEntity) passenger);
                     }
                 }
-                // 依照船的木材類型取得對應材質
                 Material boatMaterial = switch (finalNearestBoat.getBoatType()) {
                     case SPRUCE -> Material.SPRUCE_BOAT;
                     case BIRCH -> Material.BIRCH_BOAT;
@@ -506,7 +523,6 @@ public class EventListener implements Listener {
                     case DARK_OAK -> Material.DARK_OAK_BOAT;
                     default -> Material.OAK_BOAT;
                 };
-                // 移除原船，並給予玩家一個新的船
                 finalNearestBoat.remove();
                 player.getInventory().addItem(new ItemStack(boatMaterial, 1));
             }
