@@ -426,8 +426,8 @@ public class EventListener implements Listener {
                 }
             }
         }
-        // 處理玩家騎乘的馬匹支援：若玩家的載具為 Horse 類型，直接取得該馬參考（不強制下馬）
-        final Horse playerHorse = (player.getVehicle() instanceof Horse) ? (Horse) player.getVehicle() : null;
+        // 處理玩家騎乘的載具支援：記錄玩家當前的載具（不強制下載具）
+        final Entity playerVehicle = player.getVehicle();
         // 尋找距離玩家最近，且船上有生物乘客的船（半徑5格）
         Boat nearestBoat = null;
         double minDistance = Double.MAX_VALUE;
@@ -458,10 +458,11 @@ public class EventListener implements Listener {
             // 先傳送玩家
             player.teleport(targetLocation);
             // 如果玩家騎乘了馬匹，傳送馬匹並恢復騎乘狀態
-            if (playerHorse != null && !playerHorse.isDead()) {
-                playerHorse.teleport(targetLocation);
-                if (!playerHorse.getPassengers().contains(player)) {
-                    playerHorse.addPassenger(player);
+            // 如果玩家正在騎乘載具，傳送載具並恢復騎乘狀態
+            if (playerVehicle != null && !playerVehicle.isDead()) {
+                playerVehicle.teleport(targetLocation);
+                if (!playerVehicle.getPassengers().contains(player)) {
+                    playerVehicle.addPassenger(player);
                 }
             }
             // 處理附近船隻傳送支援
