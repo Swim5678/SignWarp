@@ -417,9 +417,9 @@ public class EventListener implements Listener {
         }
         // 加入無敵列表，防止傳送期間受傷
         invinciblePlayers.add(playerUUID);
-        // 記錄玩家附近12格內，被牽引且牽引者為玩家的生物
+        // 記錄玩家附近14格內，被牽引且牽引者為玩家的生物
         Collection<Entity> leashedEntities = new ArrayList<>();
-        for (Entity entity : player.getNearbyEntities(12, 12, 12)) {
+        for (Entity entity : player.getNearbyEntities(14, 14, 14)) {
             if (entity instanceof LivingEntity livingEntity) {
                 if (livingEntity.isLeashed() && livingEntity.getLeashHolder().equals(player)) {
                     leashedEntities.add(livingEntity);
