@@ -78,7 +78,7 @@ public class WarpGui {
         lore.add(ChatColor.YELLOW + "Y: " + warp.getLocation().getY());
         lore.add(ChatColor.YELLOW + "Z: " + warp.getLocation().getZ());
         lore.add(ChatColor.DARK_GREEN + "Created: " + warp.getFormattedCreatedAt());
-        lore.add(ChatColor.YELLOW + "Creator: " + warp.getCreator());
+        lore.add(ChatColor.GRAY + "Creator: " + warp.getCreator());
         lore.add(ChatColor.RED + "Click to teleport");
         return lore;
     }
