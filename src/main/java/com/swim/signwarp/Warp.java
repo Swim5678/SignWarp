@@ -14,15 +14,24 @@ import java.util.List;
 import java.util.Objects;
 
 public class Warp {
+    // 資料庫連線字串
     private static final String DB_URL = "jdbc:sqlite:" + JavaPlugin.getPlugin(SignWarp.class).getDataFolder() + File.separator + "warps.db";
+
+    // 原有欄位
     private final String warpName;
     private final Location location;
     private final String createdAt;
+    // 新增欄位：creator
+    private final String creator;
 
-    public Warp(String warpName, Location location, String createdAt) {
+    /**
+     * 修改建構子，新增 creator 參數
+     */
+    public Warp(String warpName, Location location, String createdAt, String creator) {
         this.warpName = warpName;
         this.location = location;
         this.createdAt = createdAt;
+        this.creator = creator;
     }
 
     public String getName() {
@@ -39,9 +48,18 @@ public class Warp {
         return dateTime.format(formatter);
     }
 
+    // 新增 getter 取得 creator
+    public String getCreator() {
+        return creator;
+    }
+
+    /**
+     * 修改 save() 方法，將 creator 也一併儲存
+     */
     public void save() {
         try (Connection conn = DriverManager.getConnection(DB_URL)) {
-            String sql = "INSERT OR REPLACE INTO warps (name, world, x, y, z, yaw, pitch, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, COALESCE((SELECT created_at FROM warps WHERE name = ?), ?))";
+            String sql = "INSERT OR REPLACE INTO warps (name, world, x, y, z, yaw, pitch, created_at, creator) " +
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, COALESCE((SELECT created_at FROM warps WHERE name = ?), ?), ?)";
             try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
                 pstmt.setString(1, warpName);
                 pstmt.setString(2, Objects.requireNonNull(location.getWorld()).getName());
@@ -50,8 +68,9 @@ public class Warp {
                 pstmt.setDouble(5, location.getZ());
                 pstmt.setFloat(6, location.getYaw());
                 pstmt.setFloat(7, location.getPitch());
-                pstmt.setString(8, warpName); // For COALESCE
-                pstmt.setString(9, createdAt); // Default value if not exists
+                pstmt.setString(8, warpName); // For COALESCE 檢查
+                pstmt.setString(9, createdAt); // 預設 created_at 值
+                pstmt.setString(10, creator); // 新增 creator 欄位
                 pstmt.executeUpdate();
             }
         } catch (SQLException e) {
@@ -71,6 +90,9 @@ public class Warp {
         }
     }
 
+    /**
+     * 修改 getByName()，多取得 creator 欄位
+     */
     public static Warp getByName(String warpName) {
         try (Connection conn = DriverManager.getConnection(DB_URL)) {
             String sql = "SELECT * FROM warps WHERE name = ?";
@@ -87,10 +109,15 @@ public class Warp {
                     float pitch = rs.getFloat("pitch");
                     String createdAt = rs.getString("created_at");
                     if (createdAt == null) {
-                        createdAt = java.time.LocalDateTime.now().toString(); // Set current time if not present
+                        createdAt = LocalDateTime.now().toString(); // 若為空則用目前時間
+                    }
+                    // 若資料庫中 creator 為空，則預設為 "unknown"
+                    String creator = rs.getString("creator");
+                    if (creator == null) {
+                        creator = "unknown";
                     }
                     Location location = new Location(world, x, y, z, yaw, pitch);
-                    return new Warp(warpName, location, createdAt);
+                    return new Warp(warpName, location, createdAt, creator);
                 }
             }
         } catch (SQLException e) {
@@ -99,6 +126,9 @@ public class Warp {
         return null;
     }
 
+    /**
+     * 修改 getAll()，查詢時一併取得 creator 欄位
+     */
     public static List<Warp> getAll() {
         List<Warp> warps = new ArrayList<>();
         try (Connection conn = DriverManager.getConnection(DB_URL)) {
@@ -116,10 +146,14 @@ public class Warp {
                     float pitch = rs.getFloat("pitch");
                     String createdAt = rs.getString("created_at");
                     if (createdAt == null) {
-                        createdAt = java.time.LocalDateTime.now().toString(); // Set current time if not present
+                        createdAt = LocalDateTime.now().toString();
+                    }
+                    String creator = rs.getString("creator");
+                    if (creator == null) {
+                        creator = "unknown";
                     }
                     Location location = new Location(world, x, y, z, yaw, pitch);
-                    warps.add(new Warp(name, location, createdAt));
+                    warps.add(new Warp(name, location, createdAt, creator));
                 }
             }
         } catch (SQLException e) {
@@ -128,8 +162,12 @@ public class Warp {
         return warps;
     }
 
+    /**
+     * 修改 createTable()，除了原有欄位外，增加 creator 欄位與 migration 檢查
+     */
     public static void createTable() {
         try (Connection conn = DriverManager.getConnection(DB_URL)) {
+            // 修改資料表建立語法，增加 creator 欄位
             String sql = "CREATE TABLE IF NOT EXISTS warps (" +
                     "name TEXT PRIMARY KEY, " +
                     "world TEXT, " +
@@ -138,26 +176,26 @@ public class Warp {
                     "z REAL, " +
                     "yaw REAL, " +
                     "pitch REAL, " +
-                    "created_at TEXT)";
+                    "created_at TEXT, " +
+                    "creator TEXT" +
+                    ")";
             try (Statement stmt = conn.createStatement()) {
                 stmt.execute(sql);
             }
 
-            // Migration logic to add created_at column if it doesn't exist
+            // Migration: 檢查是否有 creator 欄位，若無則自動新增，並對舊有資料設為 "unknown"
             DatabaseMetaData meta = conn.getMetaData();
-            ResultSet rs = meta.getColumns(null, null, "warps", "created_at");
+            ResultSet rs = meta.getColumns(null, null, "warps", "creator");
             if (!rs.next()) {
-                String alterSql = "ALTER TABLE warps ADD COLUMN created_at TEXT";
+                // 若未有 creator 欄位，則進行 ALTER TABLE 新增欄位
+                String alterSql = "ALTER TABLE warps ADD COLUMN creator TEXT";
                 try (Statement alterStmt = conn.createStatement()) {
                     alterStmt.execute(alterSql);
                 }
-
-                // Update existing rows with current timestamp
-                String updateSql = "UPDATE warps SET created_at = ? WHERE created_at IS NULL";
-                try (PreparedStatement pstmt = conn.prepareStatement(updateSql)) {
-                    String currentDateTime = java.time.LocalDateTime.now().toString();
-                    pstmt.setString(1, currentDateTime);
-                    pstmt.executeUpdate();
+                // 更新現有資料，預設 creator 為 "unknown"
+                String updateSql = "UPDATE warps SET creator = 'unknown' WHERE creator IS NULL";
+                try (Statement updateStmt = conn.createStatement()) {
+                    updateStmt.execute(updateSql);
                 }
             }
         } catch (SQLException e) {

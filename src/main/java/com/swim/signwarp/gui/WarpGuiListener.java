@@ -15,13 +15,13 @@ import java.util.Objects;
 public class WarpGuiListener implements Listener {
 
     public WarpGuiListener(JavaPlugin plugin) {
+        // 可在此處進行相關初始化
     }
 
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         if (event.getView().getTitle().startsWith(ChatColor.DARK_BLUE + "傳送點管理")) {
             event.setCancelled(true);
-
             ItemStack clickedItem = event.getCurrentItem();
             if (clickedItem == null || clickedItem.getType() == Material.AIR) return;
 
@@ -36,13 +36,14 @@ public class WarpGuiListener implements Listener {
             }
 
             if (clickedItem.getType() == Material.ARROW) {
-                if (Objects.requireNonNull(clickedItem.getItemMeta()).getDisplayName().equals(ChatColor.GREEN + "下一頁")) {
+                String displayName = Objects.requireNonNull(clickedItem.getItemMeta()).getDisplayName();
+                if (displayName.equals(ChatColor.GREEN + "下一頁")) {
                     int totalWarps = Warp.getAll().size();
                     int totalPages = (int) Math.ceil((double) totalWarps / 45);
                     if (currentPage + 1 < totalPages) {
                         WarpGui.openWarpGui(player, currentPage + 1);
                     }
-                } else if (clickedItem.getItemMeta().getDisplayName().equals(ChatColor.RED + "上一頁")) {
+                } else if (displayName.equals(ChatColor.RED + "上一頁")) {
                     if (currentPage > 0) {
                         WarpGui.openWarpGui(player, currentPage - 1);
                     }
@@ -51,8 +52,13 @@ public class WarpGuiListener implements Listener {
                 String warpName = ChatColor.stripColor(Objects.requireNonNull(clickedItem.getItemMeta()).getDisplayName());
                 Warp warp = Warp.getByName(warpName);
                 if (warp != null) {
+                    // 可加入權限判斷邏輯，例如只允許創建者或具管理權限的玩家傳送
+                    // if (!player.getName().equals(warp.getCreator()) && !player.hasPermission("signwarp.teleport.others")) { ... }
+
                     player.teleport(warp.getLocation());
-                    player.sendMessage(ChatColor.GREEN + "Teleported to " + warp.getName());
+                    // 修改傳送訊息中加入創建者資訊的顯示
+                    player.sendMessage(ChatColor.GREEN + "Teleported to " + warp.getName() +
+                            " (created by " + warp.getCreator() + ")");
                     player.closeInventory();
                 } else {
                     player.sendMessage(ChatColor.RED + "Warp not found: " + warpName);
