@@ -457,7 +457,6 @@ public class EventListener implements Listener {
             Location targetLocation = warp.getLocation();
             // 先傳送玩家
             player.teleport(targetLocation);
-            // 如果玩家騎乘了馬匹，傳送馬匹並恢復騎乘狀態
             // 如果玩家正在騎乘載具，傳送載具並恢復騎乘狀態
             if (playerVehicle != null && !playerVehicle.isDead()) {
                 playerVehicle.teleport(targetLocation);
