@@ -8,6 +8,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -52,15 +53,7 @@ public class WarpGui {
             ItemStack warpItem = new ItemStack(Material.OAK_SIGN);
             ItemMeta warpMeta = warpItem.getItemMeta();
             Objects.requireNonNull(warpMeta).setDisplayName(ChatColor.DARK_GREEN + warp.getName());
-            List<String> lore = new ArrayList<>();
-            lore.add(ChatColor.GOLD + "世界: " + Objects.requireNonNull(warp.getLocation().getWorld()).getName());
-            lore.add(ChatColor.YELLOW + "X: " + warp.getLocation().getX());
-            lore.add(ChatColor.YELLOW + "Y: " + warp.getLocation().getY());
-            lore.add(ChatColor.YELLOW + "Z: " + warp.getLocation().getZ());
-            lore.add(ChatColor.DARK_GREEN + "Created: " + warp.getFormattedCreatedAt());
-            // 新增一行顯示創建者資訊
-            lore.add(ChatColor.GRAY + "Creator: " + warp.getCreator());
-            lore.add(ChatColor.RED + "Click to teleport");
+            List<String> lore = getStrings(warp);
             warpMeta.setLore(lore);
             warpItem.setItemMeta(warpMeta);
             gui.addItem(warpItem);
@@ -76,5 +69,17 @@ public class WarpGui {
         gui.setItem(51, NEXT_PAGE);
 
         player.openInventory(gui);
+    }
+
+    private static @NotNull List<String> getStrings(Warp warp) {
+        List<String> lore = new ArrayList<>();
+        lore.add(ChatColor.GOLD + "世界: " + Objects.requireNonNull(warp.getLocation().getWorld()).getName());
+        lore.add(ChatColor.YELLOW + "X: " + warp.getLocation().getX());
+        lore.add(ChatColor.YELLOW + "Y: " + warp.getLocation().getY());
+        lore.add(ChatColor.YELLOW + "Z: " + warp.getLocation().getZ());
+        lore.add(ChatColor.DARK_GREEN + "Created: " + warp.getFormattedCreatedAt());
+        lore.add(ChatColor.YELLOW + "Creator: " + warp.getCreator());
+        lore.add(ChatColor.RED + "Click to teleport");
+        return lore;
     }
 }

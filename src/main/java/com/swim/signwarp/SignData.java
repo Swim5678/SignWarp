@@ -12,7 +12,7 @@ public class SignData {
     static final String SMALL_SHORT_HEADER_TARGET_WARP = "[wpt]";
 
     private final String header;
-    String warpName;
+    final String warpName;
 
     SignData(String[] lines) {
         header = ChatColor.stripColor(lines[0]);
