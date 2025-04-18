@@ -70,7 +70,7 @@ public class SWCommand implements CommandExecutor, TabCompleter {
             String visibility = args[1].toLowerCase();
             if (!visibility.equals("public") && !visibility.equals("private")) {
                 String message = plugin.getConfig().getString("messages.invalid_visibility",
-                        "&c可見性必須是 'public' 或 'private'");
+                        "&c使用權限必須是 'public' 或 'private'");
                 player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
                 return true;
             }

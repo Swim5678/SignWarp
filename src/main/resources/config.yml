@@ -55,4 +55,4 @@ messages:
   warp_visibility_changed: "&a傳送點 {warp-name} 的可見性已更改為{visibility}。"
   cant_modify_others_warp: "&c您只能更改自己創建的傳送點！"
   set_visibility_usage: "&c用法: /wp set <public|private> <傳送點名稱>"
-  invalid_visibility: "&c可見性必須是 'public' 或 'private'"
+  invalid_visibility: "&c使用權限必須是 'public' 或 'private'"
