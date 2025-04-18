@@ -61,16 +61,16 @@ public class SWCommand implements CommandExecutor, TabCompleter {
             // 檢查參數數量
             if (args.length < 3) {
                 String message = plugin.getConfig().getString("messages.set_visibility_usage",
-                        "&c用法: /wp set <public|private> <傳送點名稱>");
+                        "&c用法: /wp set <公共|私人> <傳送點名稱>");
                 player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
                 return true;
             }
 
             // 檢查可見性參數
             String visibility = args[1].toLowerCase();
-            if (!visibility.equals("public") && !visibility.equals("private")) {
+            if (!visibility.equals("公共") && !visibility.equals("私人")) {
                 String message = plugin.getConfig().getString("messages.invalid_visibility",
-                        "&c使用權限必須是 'public' 或 'private'");
+                        "&c使用權限必須是 '公共' 或 '私人'");
                 player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
                 return true;
             }
@@ -93,7 +93,7 @@ public class SWCommand implements CommandExecutor, TabCompleter {
             }
 
             // 更新傳送點可見性
-            boolean isPrivate = visibility.equals("private");
+            boolean isPrivate = visibility.equals("私人");
             Warp updatedWarp = new Warp(
                     warp.getName(),
                     warp.getLocation(),
@@ -106,7 +106,7 @@ public class SWCommand implements CommandExecutor, TabCompleter {
 
             // 發送成功訊息
             String message = plugin.getConfig().getString("messages.warp_visibility_changed",
-                            "&a傳送點 {warp-name} 的可見性已更改為{visibility}。")
+                            "&a傳送點 {warp-name} 的使用權限已更改為{visibility}。")
                     .replace("{warp-name}", warpName)
                     .replace("{visibility}", visibility);
             player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
@@ -132,7 +132,7 @@ public class SWCommand implements CommandExecutor, TabCompleter {
         }
         else if (args.length == 2 && args[0].equalsIgnoreCase("set")) {
             // 第二個參數的自動完成（set 指令後）
-            String[] visibilities = {"public", "private"};
+            String[] visibilities = {"公共", "私人"};
             for (String v : visibilities) {
                 if (v.toLowerCase().startsWith(args[1].toLowerCase())) {
                     completions.add(v);
