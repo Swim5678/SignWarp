@@ -152,7 +152,6 @@ public class SWCommand implements CommandExecutor, TabCompleter {
                 );
             }
         }
-
         return completions;
     }
 }
