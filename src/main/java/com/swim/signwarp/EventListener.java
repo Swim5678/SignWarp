@@ -221,7 +221,9 @@ public class EventListener implements Listener {
             // 建立傳送目標
             String currentDateTime = LocalDateTime.now().toString();
             // 修改建構子：將 player.getName() 當作 creator 參數傳入
-            Warp warp = new Warp(signData.warpName, player.getLocation(), currentDateTime, player.getName(), player.getUniqueId().toString());
+            boolean defaultVisibility = JavaPlugin.getPlugin(SignWarp.class).getConfig().getBoolean("default-visibility", false);
+            Warp warp = new Warp(signData.warpName, player.getLocation(), currentDateTime,
+                    player.getName(), player.getUniqueId().toString(), defaultVisibility);
             warp.save();
             event.setLine(0, ChatColor.BLUE + SignData.HEADER_TARGET);
             String targetSignCreatedMessage = config.getString("messages.target_sign_created");
@@ -313,6 +315,18 @@ public class EventListener implements Listener {
         }
         Player player = event.getPlayer();
         UUID playerId = player.getUniqueId();
+        Warp warp = Warp.getByName(signData.warpName);
+        if (warp != null && warp.isPrivate()) {
+            // 檢查是否為私人傳送點且玩家有權限使用
+            if (!warp.getCreatorUuid().equals(player.getUniqueId().toString())
+                    && !player.hasPermission("signwarp.admin")) {
+                // 從配置檔獲取錯誤訊息
+                String privateWarpMessage = config.getString("messages.private_warp",
+                        "&c這是一個私人傳送點，只有創建者可以使用。");
+                player.sendMessage(ChatColor.translateAlternateColorCodes('&', privateWarpMessage));
+                return;
+            }
+        }
         // 檢查傳送冷卻
         long now = System.currentTimeMillis();
         if (cooldowns.containsKey(playerId)) {
@@ -403,6 +417,26 @@ public class EventListener implements Listener {
             String warpNotFoundMessage = config.getString("messages.warp_not_found");
             if (warpNotFoundMessage != null) {
                 player.sendMessage(ChatColor.translateAlternateColorCodes('&', warpNotFoundMessage));
+            }
+            return;
+        }
+        if (warp.isPrivate() && !warp.getCreatorUuid().equals(player.getUniqueId().toString())
+                && !player.hasPermission("signwarp.admin")) {
+            String privateWarpMessage = config.getString("messages.private_warp",
+                    "&c這是一個私人傳送點，只有創建者可以使用。");
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&', privateWarpMessage));
+            // 如果之前已經扣除了物品，要返還
+            UUID playerUUID = player.getUniqueId();
+            if (pendingItemCosts.containsKey(playerUUID)) {
+                String useItem = config.getString("use-item", "none");
+                if (!"none".equalsIgnoreCase(useItem)) {
+                    Material material = Material.getMaterial(useItem.toUpperCase());
+                    if (material != null) {
+                        int cost = pendingItemCosts.get(playerUUID);
+                        player.getInventory().addItem(new ItemStack(material, cost));
+                    }
+                }
+                pendingItemCosts.remove(playerUUID);
             }
             return;
         }

@@ -1,14 +1,14 @@
 name: SignWarp
 version: '${project.version}'
-description: Warp tp plugin on signs
+description: 一個基於告示牌的傳送點插件，支援私人與公共傳送點功能
 author: Swim
 website: https://verdo568.vercel.app/
 api-version: '1.21'
 main: com.swim.signwarp.SignWarp
 commands:
   signwarp:
-    description: "Manage SignWarp commands"
-    usage: "/signwarp <subcommand>"
+    description: "管理傳送點系統的指令"
+    usage: "/signwarp <子指令>"
     aliases: ["wp"]
 permissions:
   signwarp.*:
@@ -16,18 +16,28 @@ permissions:
       - signwarp.create
       - signwarp.use
       - signwarp.destroy
+      - signwarp.admin
+      - signwarp.reload
+      - signwarp.private.use
+      - signwarp.private.set
   signwarp.create:
-    description: "Allows you to create warp signs"
+    description: "允許創建傳送點告示牌"
     default: op
   signwarp.use:
-    description: "Allow uses of warp signs"
+    description: "允許使用傳送點"
     default: true
   signwarp.reload:
-    description: "Allows you to reload the SignWarp configuration"
+    description: "允許重新載入插件配置"
     default: op
   signwarp.admin:
-    description: "Allows access to the warp management GUI"
+    description: "允許使用管理介面和修改任何傳送點"
     default: op
   signwarp.destroy:
-    description: "Allows you to destroy warp signs"
+    description: "允許破壞傳送點告示牌"
     default: op
+  signwarp.private.use:
+    description: "允許使用其他玩家的私人傳送點"
+    default: op
+  signwarp.private.set:
+    description: "允許設定傳送點為公共或私人"
+    default: true

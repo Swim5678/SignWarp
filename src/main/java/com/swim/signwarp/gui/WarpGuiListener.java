@@ -52,9 +52,6 @@ public class WarpGuiListener implements Listener {
                 String warpName = ChatColor.stripColor(Objects.requireNonNull(clickedItem.getItemMeta()).getDisplayName());
                 Warp warp = Warp.getByName(warpName);
                 if (warp != null) {
-                    // 可加入權限判斷邏輯，例如只允許創建者或具管理權限的玩家傳送
-                    // if (!player.getName().equals(warp.getCreator()) && !player.hasPermission("signwarp.teleport.others")) { ... }
-
                     player.teleport(warp.getLocation());
                     // 修改傳送訊息中加入創建者資訊的顯示
                     player.sendMessage(ChatColor.GREEN + "Teleported to " + warp.getName() +

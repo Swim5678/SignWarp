@@ -21,9 +21,14 @@ teleport-effect: ENDER_SIGNAL
 ###############################################################################
 # 建立 Warp Target 標誌所需的物品（設為 none 代表不需要）
 create-wpt-item: "DIAMOND_SWORD"
-
 # 建立 Warp Target 標誌時消耗的物品數量
 create-wpt-item-cost: 1
+
+###############################################################################
+# 傳送點可見性設定
+###############################################################################
+# 預設的傳送點可見性（true 為私人，false 為公共）
+default-visibility: false
 
 ###############################################################################
 # 自訂訊息
@@ -46,3 +51,8 @@ messages:
   notify-cost: "&a您已被收取 {cost} 金幣進行傳送。"
   not_permission: "&c您沒有權限！"
   cooldown: "&c您必須等待 {cooldown} 秒才能再次傳送。"
+  private_warp: "&c這是一個私人傳送點，只有創建者可以使用。"
+  warp_visibility_changed: "&a傳送點 {warp-name} 的可見性已更改為{visibility}。"
+  cant_modify_others_warp: "&c您只能更改自己創建的傳送點！"
+  set_visibility_usage: "&c用法: /wp set <public|private> <傳送點名稱>"
+  invalid_visibility: "&c可見性必須是 'public' 或 'private'"

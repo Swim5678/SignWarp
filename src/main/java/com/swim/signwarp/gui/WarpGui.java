@@ -77,9 +77,10 @@ public class WarpGui {
         lore.add(ChatColor.YELLOW + "X: " + warp.getLocation().getX());
         lore.add(ChatColor.YELLOW + "Y: " + warp.getLocation().getY());
         lore.add(ChatColor.YELLOW + "Z: " + warp.getLocation().getZ());
-        lore.add(ChatColor.DARK_GREEN + "Created: " + warp.getFormattedCreatedAt());
-        lore.add(ChatColor.GRAY + "Creator: " + warp.getCreator());
-        lore.add(ChatColor.RED + "Click to teleport");
+        lore.add(ChatColor.DARK_GREEN + "建立時間: " + warp.getFormattedCreatedAt());
+        lore.add(ChatColor.GRAY + "建立者: " + warp.getCreator());
+        lore.add(ChatColor.AQUA + "狀態: " + (warp.isPrivate() ? "私人" : "公共")); // 新增此行
+        lore.add(ChatColor.RED + "點擊傳送");
         return lore;
     }
 }

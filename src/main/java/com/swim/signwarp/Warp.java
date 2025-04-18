@@ -3,6 +3,7 @@ package com.swim.signwarp;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
@@ -23,19 +24,23 @@ public class Warp {
     private final String createdAt;// 創建時間
     private final String creator;// 創建者
     private final String creatorUuid; // 新增 UUID 欄位
+    private final boolean isPrivate;// 是否私有
 
-    // 修改建構子
-    public Warp(String warpName, Location location, String createdAt, String creator, String creatorUuid) {
+    public Warp(String warpName, Location location, String createdAt, String creator, String creatorUuid, boolean isPrivate) {
         this.warpName = warpName;
         this.location = location;
         this.createdAt = createdAt;
         this.creator = creator;
         this.creatorUuid = creatorUuid;
+        this.isPrivate = isPrivate;
     }
 
-    // 新增 getter
     public String getCreatorUuid() {
         return creatorUuid;
+    }
+
+    public boolean isPrivate() {
+        return isPrivate;
     }
 
     public String getName() {
@@ -57,13 +62,10 @@ public class Warp {
         return creator;
     }
 
-    /**
-     * 修改 save() 方法，將 creator 也一併儲存
-     */
     public void save() {
         try (Connection conn = DriverManager.getConnection(DB_URL)) {
-            String sql = "INSERT OR REPLACE INTO warps (name, world, x, y, z, yaw, pitch, created_at, creator, creator_uuid) " +
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, COALESCE((SELECT created_at FROM warps WHERE name = ?), ?), ?, ?)";
+            String sql = "INSERT OR REPLACE INTO warps (name, world, x, y, z, yaw, pitch, created_at, creator, creator_uuid, is_private) " +
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, COALESCE((SELECT created_at FROM warps WHERE name = ?), ?), ?, ?, ?)";
             try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
                 pstmt.setString(1, warpName);
                 pstmt.setString(2, Objects.requireNonNull(location.getWorld()).getName());
@@ -76,6 +78,7 @@ public class Warp {
                 pstmt.setString(9, createdAt);
                 pstmt.setString(10, creator);
                 pstmt.setString(11, creatorUuid);
+                pstmt.setInt(12, isPrivate ? 1 : 0); // 新增此行
                 pstmt.executeUpdate();
             }
         } catch (SQLException e) {
@@ -113,19 +116,14 @@ public class Warp {
                     float yaw = rs.getFloat("yaw");
                     float pitch = rs.getFloat("pitch");
                     String createdAt = rs.getString("created_at");
-                    if (createdAt == null) {
-                        createdAt = LocalDateTime.now().toString();
-                    }
                     String creator = rs.getString("creator");
                     String creatorUuid = rs.getString("creator_uuid");
-                    if (creator == null) {
-                        creator = "unknown";
-                    }
-                    if (creatorUuid == null) {
-                        creatorUuid = "";
-                    }
+                    boolean isPrivate = rs.getInt("is_private") == 1; // 新增此行
+                    if (creator == null) creator = "unknown";
+                    if (creatorUuid == null) creatorUuid = "";
+                    if (createdAt == null) createdAt = LocalDateTime.now().toString();
                     Location location = new Location(world, x, y, z, yaw, pitch);
-                    return new Warp(warpName, location, createdAt, creator, creatorUuid);
+                    return new Warp(warpName, location, createdAt, creator, creatorUuid, isPrivate);
                 }
             }
         } catch (SQLException e) {
@@ -153,19 +151,14 @@ public class Warp {
                     float yaw = rs.getFloat("yaw");
                     float pitch = rs.getFloat("pitch");
                     String createdAt = rs.getString("created_at");
-                    if (createdAt == null) {
-                        createdAt = LocalDateTime.now().toString();
-                    }
                     String creator = rs.getString("creator");
                     String creatorUuid = rs.getString("creator_uuid");
-                    if (creator == null) {
-                        creator = "unknown";
-                    }
-                    if (creatorUuid == null) {
-                        creatorUuid = "";
-                    }
+                    boolean isPrivate = rs.getInt("is_private") == 1; // 新增此行
+                    if (creator == null) creator = "unknown";
+                    if (creatorUuid == null) creatorUuid = "";
+                    if (createdAt == null) createdAt = LocalDateTime.now().toString();
                     Location location = new Location(world, x, y, z, yaw, pitch);
-                    warps.add(new Warp(name, location, createdAt, creator, creatorUuid));
+                    warps.add(new Warp(name, location, createdAt, creator, creatorUuid, isPrivate));
                 }
             }
         } catch (SQLException e) {
@@ -173,7 +166,14 @@ public class Warp {
         }
         return warps;
     }
-
+    private static boolean getDefaultVisibility() {
+        return JavaPlugin.getPlugin(SignWarp.class).getConfig().getBoolean("default-visibility", false);
+    }
+    public static Warp createNew(String name, Location location, Player creator) {
+        boolean isPrivate = getDefaultVisibility();
+        return new Warp(name, location, LocalDateTime.now().toString(),
+                creator.getName(), creator.getUniqueId().toString(), isPrivate);
+    }
     /**
      * 修改 createTable()，除了原有欄位外，增加 creator 欄位與 migration 檢查
      */
@@ -189,24 +189,20 @@ public class Warp {
                     "pitch REAL, " +
                     "created_at TEXT, " +
                     "creator TEXT, " +
-                    "creator_uuid TEXT" + // 新增 UUID 欄位
+                    "creator_uuid TEXT, " +
+                    "is_private INTEGER DEFAULT 0" + // 新增此行
                     ")";
             try (Statement stmt = conn.createStatement()) {
                 stmt.execute(sql);
             }
 
-            // Migration: 檢查是否有 creator_uuid 欄位
+            // 新增 migration 檢查
             DatabaseMetaData meta = conn.getMetaData();
-            ResultSet rs = meta.getColumns(null, null, "warps", "creator_uuid");
+            ResultSet rs = meta.getColumns(null, null, "warps", "is_private");
             if (!rs.next()) {
-                String alterSql = "ALTER TABLE warps ADD COLUMN creator_uuid TEXT";
+                String alterSql = "ALTER TABLE warps ADD COLUMN is_private INTEGER DEFAULT 0";
                 try (Statement alterStmt = conn.createStatement()) {
                     alterStmt.execute(alterSql);
-                }
-                // 更新現有資料，預設 UUID 為空字串
-                String updateSql = "UPDATE warps SET creator_uuid = '' WHERE creator_uuid IS NULL";
-                try (Statement updateStmt = conn.createStatement()) {
-                    updateStmt.execute(updateSql);
                 }
             }
         } catch (SQLException e) {
