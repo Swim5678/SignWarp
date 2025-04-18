@@ -221,7 +221,7 @@ public class EventListener implements Listener {
             // 建立傳送目標
             String currentDateTime = LocalDateTime.now().toString();
             // 修改建構子：將 player.getName() 當作 creator 參數傳入
-            Warp warp = new Warp(signData.warpName, player.getLocation(), currentDateTime, player.getName());
+            Warp warp = new Warp(signData.warpName, player.getLocation(), currentDateTime, player.getName(), player.getUniqueId().toString());
             warp.save();
             event.setLine(0, ChatColor.BLUE + SignData.HEADER_TARGET);
             String targetSignCreatedMessage = config.getString("messages.target_sign_created");
@@ -262,9 +262,13 @@ public class EventListener implements Listener {
         if (warp == null) {
             return;
         }
+        // 權限檢查：
+        // 1. 檢查是否有全域破壞權限
+        // 2. 只檢查UUID是否匹配
+        boolean hasPermission = player.hasPermission("signwarp.destroy") ||
+                player.getUniqueId().toString().equals(warp.getCreatorUuid());
 
-        // 檢查：必須擁有 signwarp.destroy 權限 或 為該 warp 建立者
-        if (!player.hasPermission("signwarp.destroy") && !player.getName().equals(warp.getCreator())) {
+        if (!hasPermission) {
             String noPermissionMessage = config.getString("messages.destroy_permission");
             if (noPermissionMessage != null) {
                 player.sendMessage(ChatColor.translateAlternateColorCodes('&', noPermissionMessage));
@@ -273,7 +277,7 @@ public class EventListener implements Listener {
             return;
         }
 
-        // 破壞有效，則刪除該 warp
+        // 執行破壞
         warp.remove();
         String destroyedMsg = config.getString("messages.warp_destroyed");
         if (destroyedMsg != null) {
