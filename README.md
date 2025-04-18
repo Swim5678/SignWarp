@@ -98,7 +98,7 @@ messages:
 
 **預覽：**
 ```yaml
-teleport-sound: ENTITY_ENDERMAN_TELEPORT
+teleport-sound: minecraft:entity.enderman.teleport
 teleport-effect: ENDER_SIGNAL
 ```
 ## 截圖

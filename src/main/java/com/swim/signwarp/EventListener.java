@@ -493,15 +493,29 @@ public class EventListener implements Listener {
                 entity.teleport(targetLocation);
             }
             // 播放傳送音效與特效
-            String soundName = config.getString("teleport-sound", "ENTITY_ENDERMAN_TELEPORT");
-            String effectName = config.getString("teleport-effect", "ENDER_SIGNAL");
-            Sound sound = Sound.valueOf(soundName);
-            Effect effect = Effect.valueOf(effectName);
+            String rawSoundName = config.getString("teleport-sound", "minecraft:entity.enderman.teleport");
+            // 将配置名转换为 namespaced key：小写并将下划线替换为点
+            String soundKeyString = rawSoundName.toLowerCase().replace('_', '.');
+            // 从字符串解析 NamespacedKey，若无命名空间则默认使用插件的命名空间
+            NamespacedKey soundKey = NamespacedKey.fromString(soundKeyString, plugin);
+            // 通过 Registry.SOUNDS 安全地获取 Sound（取代已弃用的 Sound.valueOf）
+            Sound sound = null;
+            if (soundKey != null) {
+                sound = Registry.SOUNDS.get(soundKey);
+            }
+            if (sound == null) {
+                    plugin.getLogger().warning("未找到声音: " + rawSoundName);
+            }
+
+            Effect effect = Effect.valueOf(config.getString("teleport-effect", "ENDER_SIGNAL"));
             World world = targetLocation.getWorld();
             if (world != null) {
-                world.playSound(targetLocation, sound, 1, 1);
+                if (sound != null) {
+                    world.playSound(targetLocation, sound, 1.0f, 1.0f);
+                }
                 world.playEffect(targetLocation, effect, 10);
             }
+
             String successMessage = config.getString("messages.teleport-success");
             if (successMessage != null) {
                 player.sendMessage(ChatColor.translateAlternateColorCodes('&',
