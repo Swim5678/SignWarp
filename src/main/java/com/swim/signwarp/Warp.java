@@ -87,6 +87,12 @@ public class Warp {
             }
         } catch (SQLException e) {
             logger.severe("Failed to save warp '" + warpName + "': " + e.getMessage());
+            // For debugging, you might want to include the stack trace in log
+            logger.severe(() -> {
+                StringWriter sw = new StringWriter();
+                e.printStackTrace(new PrintWriter(sw));
+                return sw.toString();
+            });
         }
     }
 
