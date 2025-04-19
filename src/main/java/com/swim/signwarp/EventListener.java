@@ -2,9 +2,7 @@ package com.swim.signwarp;
 
 import com.swim.signwarp.utils.SignUtils;
 import org.bukkit.*;
-import org.bukkit.block.Block;
-import org.bukkit.block.BlockFace;
-import org.bukkit.block.Sign;
+import org.bukkit.block.*;
 import org.bukkit.block.data.type.WallSign;
 import org.bukkit.block.sign.Side;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -12,11 +10,8 @@ import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.*;
-import org.bukkit.event.entity.EntityDamageEvent;
-import org.bukkit.event.entity.EntityExplodeEvent;
-import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.event.player.PlayerMoveEvent;
-import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.entity.*;
+import org.bukkit.event.player.*;
 import org.bukkit.event.server.PluginEnableEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -24,6 +19,7 @@ import org.bukkit.scheduler.BukkitTask;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 
 public class EventListener implements Listener {
@@ -31,13 +27,13 @@ public class EventListener implements Listener {
     private static FileConfiguration config;
 
     // 儲存傳送任務（排程）
-    private final HashMap<UUID, BukkitTask> teleportTasks = new HashMap<>();
+    private final ConcurrentHashMap<UUID, BukkitTask> teleportTasks = new ConcurrentHashMap<>();
     // 傳送期間無敵玩家，避免在延遲中受傷
     private final HashSet<UUID> invinciblePlayers = new HashSet<>();
     // 暫存扣除的物品數量（用於傳送取消時返還）
-    private final HashMap<UUID, Integer> pendingItemCosts = new HashMap<>();
+    private final ConcurrentHashMap<UUID, Integer> pendingItemCosts = new ConcurrentHashMap<>();
     // 傳送冷卻：記錄玩家下次可傳送的時間（毫秒）
-    private final HashMap<UUID, Long> cooldowns = new HashMap<>();
+    private final ConcurrentHashMap<UUID, Long> cooldowns = new ConcurrentHashMap<>();
 
     // 配置檔中傳送物品檢查旗標，若無效則停用對應功能
     private boolean validCreateWPTItem = true;

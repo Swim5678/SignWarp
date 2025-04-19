@@ -7,17 +7,21 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.sql.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class Warp {
     // 資料庫連線字串
     private static final String DB_URL = "jdbc:sqlite:" + JavaPlugin.getPlugin(SignWarp.class).getDataFolder() + File.separator + "warps.db";
-
+    private static final Logger logger = JavaPlugin.getPlugin(SignWarp.class).getLogger();
     // 資料庫連線
     private final String warpName;// 位置名稱
     private final Location location;// 位置
@@ -82,7 +86,7 @@ public class Warp {
                 pstmt.executeUpdate();
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.severe("Failed to save warp '" + warpName + "': " + e.getMessage());
         }
     }
 
@@ -94,7 +98,12 @@ public class Warp {
                 pstmt.executeUpdate();
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.severe("Failed to remove warp '" + warpName + "': " + e.getMessage());
+            if (logger.isLoggable(Level.FINE)) {
+                StringWriter sw = new StringWriter();
+                e.printStackTrace(new PrintWriter(sw));
+                logger.fine(sw.toString());
+            }
         }
     }
 
@@ -127,7 +136,12 @@ public class Warp {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.severe("Failed to get warp '" + warpName + "': " + e.getMessage());
+            if (logger.isLoggable(Level.FINE)) {
+                StringWriter sw = new StringWriter();
+                e.printStackTrace(new PrintWriter(sw));
+                logger.fine(sw.toString());
+            }
         }
         return null;
     }
@@ -162,7 +176,12 @@ public class Warp {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.severe("Failed to get all warps: " + e.getMessage());
+            if (logger.isLoggable(Level.FINE)) {
+                StringWriter sw = new StringWriter();
+                e.printStackTrace(new PrintWriter(sw));
+                logger.fine(sw.toString());
+            }
         }
         return warps;
     }
@@ -206,7 +225,12 @@ public class Warp {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.severe("Failed to create warps table: " + e.getMessage());
+            if (logger.isLoggable(Level.FINE)) {
+                StringWriter sw = new StringWriter();
+                e.printStackTrace(new PrintWriter(sw));
+                logger.fine(sw.toString());
+            }
         }
     }
 }
