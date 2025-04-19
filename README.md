@@ -9,8 +9,8 @@ SignWarp 允許玩家放置告示牌，透過簡單的右鍵點擊在它們之�
 
 ## 傳送狀態支援
 SignWarp 完整支援以下玩家狀態的傳送：
-- 騎乘狀態：玩家在騎乘馬時，能連同坐騎一同傳送。
-- 船上實體：如玩家五格內的船有其他實體（如動物或怪物）同乘一艘船，也能整艘船一起傳送到目的地。
+- 騎乘狀態：玩家在騎乘載具時，能連同坐騎一同傳送。
+- 船上實體：如玩家五格內的船有其他實體（如動物或怪物），也能整艘船一起傳送到目的地。
 
 ## 權限設定
 
@@ -20,10 +20,13 @@ SignWarp 完整支援以下玩家狀態的傳送：
 - `signwarp.admin` - 允許進入傳送管理 GUI（預設：op）
 - `signwarp.*` - 允許使用所有功能（預設：op）
 - `signwarp.destroy` - 允許銷毀傳送告示牌（預設：op）
+- `signwarp.private.use` -允許使用其他玩家的傳送點（預設：op）
+- `signwarp.private.set` -允許設定傳送點為公共或私人（預設：所有人）
 
 ## 命令:
 - `/signwarp reload` - 重新載入配置文件。
 - `/signwarp gui` - 開啟傳送管理 GUI。
+- `/signwarp set <public|private> <傳送點名稱>` - 設定傳送點的使用權限
 - 可縮寫 `wp`
 ## 使用方式
 
@@ -47,12 +50,27 @@ SignWarp 完整支援以下玩家狀態的傳送：
 
 你可以在 config.yml 中 `use-item` 將其設為 "none"，這樣任何物品都可以觸發傳送（即每次傳送免費）。
 
-目標告示牌預設建立玩家和OP有權限破壞
+### 設定傳送點使用權限
+你可以使用以下指令來設定傳送點的使用權限
 
+`/wp set <公共 | 私人> <傳送點名稱>`
+
+- 私人傳送點只能被創建者和管理員使用
+- 公共傳送點所有人都可以使用
+- 只有創建者和管理員可以更改傳送點的可見性
+- 預設的傳送點可見性可在配置文件中設定
+
+建立好兩種告示牌後，你可以使用配置中設定的 `use-item` 右鍵點擊（預設為終界珍珠）來啟動傳送。
+每次傳送將消耗配置中設定的物品數量（預設：1）。
+
+你可以在 config.yml 中 `use-item` 將其設為 "none"，這樣任何物品都可以觸發傳送（即每次傳送免費）。
+
+目標告示牌預設建立玩家和OP有權限破壞
 ## 管理 GUI
 
 ![Warps Admin](https://i.imgur.com/60JLVPC.gif)
 
+GUI 中會顯示傳送點的可見性狀態（公共/私人）
 ## 訊息自訂
 
 在 `config.yml` 配置文件中，你可以自訂插件使用的訊息。 這些訊息定義在 `messages` 這個區塊下，可以依據你的喜好進行修改。
@@ -78,6 +96,11 @@ messages:
   notify-cost: "&a您已被收取 {cost} 金幣進行傳送。"
   not_permission: "&c您沒有權限！"
   cooldown: "&c您必須等待 {cooldown} 秒才能再次傳送。"
+  private_warp: "&c這是一個私人傳送點，只有創建者可以使用。"
+  warp_visibility_changed: "&a傳送點 {warp-name} 的使用權限已更改為{visibility}。"
+  cant_modify_others_warp: "&c您只能更改自己創建的傳送點！"
+  set_visibility_usage: "&c用法: /wp set <公共|私人> <傳送點名稱>"
+  invalid_visibility: "&c使用權限必須是 '公共' 或 '私人'"
   ```
 
 - `{warp-name}` : 此佔位符將被替換為告示牌上指定的傳送名稱。
@@ -86,6 +109,7 @@ messages:
 - `{cost}` : 此佔位符將被替換為傳送所收取的貨幣數量。
 - `{time}` : 此佔位符將被替換為傳送完成前的倒數秒數。
 - `{cooldown}` : 此佔位符將被替換為傳送完成後的冷卻秒數。
+- `{visibility}` : 此佔位符將被替換為傳送點的可見性設定（公共/私人）
 
 你可以使用 Minecraft 顏色代碼來美化文字。這些代碼以 & 字符開頭，後面跟著代表特定顏色的字母或數字。 [更多資訊](https://www.digminecraft.com/lists/color_list_pc.php)
 
