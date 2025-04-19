@@ -122,16 +122,24 @@ public class SWCommand implements CommandExecutor, TabCompleter {
         List<String> completions = new ArrayList<>();
 
         if (args.length == 1) {
-            // 第一個參數的自動完成
-            String[] commands = {"gui", "reload", "set"};
-            for (String cmd : commands) {
-                if (cmd.toLowerCase().startsWith(args[0].toLowerCase())) {
-                    completions.add(cmd);
+            // 只顯示玩家有權限使用的指令
+            if (sender.hasPermission("signwarp.admin")) {
+                if ("gui".toLowerCase().startsWith(args[0].toLowerCase())) {
+                    completions.add("gui");
                 }
+            }
+            if (sender.hasPermission("signwarp.reload")) {
+                if ("reload".toLowerCase().startsWith(args[0].toLowerCase())) {
+                    completions.add("reload");
+                }
+            }
+            // set 指令的權限檢查（如果需要）
+            if ("set".toLowerCase().startsWith(args[0].toLowerCase())) {
+                completions.add("set");
             }
         }
         else if (args.length == 2 && args[0].equalsIgnoreCase("set")) {
-            // 第二個參數的自動完成（set 指令後）
+            // set 指令的第二個參數補全
             String[] visibilities = {"公共", "私人"};
             for (String v : visibilities) {
                 if (v.toLowerCase().startsWith(args[1].toLowerCase())) {
@@ -140,7 +148,7 @@ public class SWCommand implements CommandExecutor, TabCompleter {
             }
         }
         else if (args.length == 3 && args[0].equalsIgnoreCase("set")) {
-            // 第三個參數的自動完成（傳送點名稱）
+            // 傳送點名稱補全
             if (sender instanceof Player player) {
                 completions.addAll(
                         Warp.getAll().stream()

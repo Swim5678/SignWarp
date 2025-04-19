@@ -55,7 +55,7 @@ public class WarpGuiListener implements Listener {
                     player.teleport(warp.getLocation());
                     // 修改傳送訊息中加入創建者資訊的顯示
                     player.sendMessage(ChatColor.GREEN + "Teleported to " + warp.getName() +
-                            " (created by " + warp.getCreator() + ")");
+                            " (建立者: " + warp.getCreator() + ")");
                     player.closeInventory();
                 } else {
                     player.sendMessage(ChatColor.RED + "Warp not found: " + warpName);
