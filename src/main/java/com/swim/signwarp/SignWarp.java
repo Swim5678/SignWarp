@@ -14,7 +14,7 @@ public final class SignWarp extends JavaPlugin implements Listener {
 
         // Initialize database and migrate table if needed
         Warp.createTable();
-
+        Warp.createInvitesTable();// Create the invites table if it doesn't exist
         // Register commands and tab completer
         PluginCommand command = getCommand("signwarp");
         if (command != null) {

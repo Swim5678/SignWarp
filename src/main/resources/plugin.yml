@@ -8,7 +8,11 @@ main: com.swim.signwarp.SignWarp
 commands:
   signwarp:
     description: "管理傳送點系統的指令"
-    usage: "/signwarp <子指令>"
+    usage: |
+      /wp set <公共|私人> <傳送點名稱> - 設定傳送點的可見性
+      /wp invite <玩家> <傳送點名稱> - 邀請玩家使用私人傳送點
+      /wp uninvite <玩家> <傳送點名稱> - 移除玩家的傳送點使用權限
+      /wp list-invites <傳送點名稱> - 查看傳送點的邀請列表
     aliases: ["wp"]
 permissions:
   signwarp.*:
@@ -20,6 +24,9 @@ permissions:
       - signwarp.reload
       - signwarp.private.use
       - signwarp.private.set
+      - signwarp.invite
+      - signwarp.invite.list
+      - signwarp.invite.admin
   signwarp.create:
     description: "允許創建傳送點告示牌"
     default: op
@@ -41,3 +48,12 @@ permissions:
   signwarp.private.set:
     description: "允許設定傳送點為公共或私人"
     default: true
+  signwarp.invite:
+    description: "允許邀請其他玩家使用自己的私人傳送點"
+    default: true
+  signwarp.invite.list:
+    description: "允許查看傳送點的邀請列表"
+    default: true
+  signwarp.invite.admin:
+    description: "允許管理任何傳送點的邀請列表"
+    default: op

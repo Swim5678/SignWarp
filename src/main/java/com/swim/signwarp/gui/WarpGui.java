@@ -1,6 +1,7 @@
 package com.swim.signwarp.gui;
 
 import com.swim.signwarp.Warp;
+import com.swim.signwarp.WarpInvite;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -79,7 +80,19 @@ public class WarpGui {
         lore.add(ChatColor.YELLOW + "Z: " + warp.getLocation().getZ());
         lore.add(ChatColor.DARK_GREEN + "建立時間: " + warp.getFormattedCreatedAt());
         lore.add(ChatColor.GRAY + "建立者: " + warp.getCreator());
-        lore.add(ChatColor.AQUA + "狀態: " + (warp.isPrivate() ? "私人" : "公共")); // 新增此行
+        lore.add(ChatColor.AQUA + "狀態: " + (warp.isPrivate() ? "私人" : "公共"));
+
+        // 新增：顯示被邀請的玩家
+        if (warp.isPrivate()) {
+            List<WarpInvite> invites = warp.getInvitedPlayers();
+            if (!invites.isEmpty()) {
+                lore.add(ChatColor.LIGHT_PURPLE + "已邀請玩家:");
+                for (WarpInvite invite : invites) {
+                    lore.add(ChatColor.GRAY + "- " + invite.getInvitedName());
+                }
+            }
+        }
+
         lore.add(ChatColor.RED + "點擊傳送");
         return lore;
     }

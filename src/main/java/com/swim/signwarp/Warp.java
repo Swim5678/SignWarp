@@ -239,4 +239,91 @@ public class Warp {
             }
         }
     }
+    // 新增創建邀請表的方法
+    public static void createInvitesTable() {
+        try (Connection conn = DriverManager.getConnection(DB_URL)) {
+            String sql = "CREATE TABLE IF NOT EXISTS warp_invites (" +
+                    "warp_name TEXT, " +
+                    "invited_uuid TEXT, " +
+                    "invited_name TEXT, " +
+                    "invited_at TEXT, " +
+                    "PRIMARY KEY (warp_name, invited_uuid), " +
+                    "FOREIGN KEY (warp_name) REFERENCES warps(name) ON DELETE CASCADE" +
+                    ")";
+            try (Statement stmt = conn.createStatement()) {
+                stmt.execute(sql);
+            }
+        } catch (SQLException e) {
+            logger.severe("Failed to create warp_invites table: " + e.getMessage());
+        }
+    }
+
+    // 新增邀請玩家方法
+    public void invitePlayer(Player invitedPlayer) {
+        try (Connection conn = DriverManager.getConnection(DB_URL)) {
+            String sql = "INSERT OR REPLACE INTO warp_invites (warp_name, invited_uuid, invited_name, invited_at) VALUES (?, ?, ?, ?)";
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setString(1, this.warpName);
+                pstmt.setString(2, invitedPlayer.getUniqueId().toString());
+                pstmt.setString(3, invitedPlayer.getName());
+                pstmt.setString(4, LocalDateTime.now().toString());
+                pstmt.executeUpdate();
+            }
+        } catch (SQLException e) {
+            logger.severe("Failed to invite player to warp '" + warpName + "': " + e.getMessage());
+        }
+    }
+
+    // 新增移除邀請方法
+    public void removeInvite(String playerUuid) {
+        try (Connection conn = DriverManager.getConnection(DB_URL)) {
+            String sql = "DELETE FROM warp_invites WHERE warp_name = ? AND invited_uuid = ?";
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setString(1, this.warpName);
+                pstmt.setString(2, playerUuid);
+                pstmt.executeUpdate();
+            }
+        } catch (SQLException e) {
+            logger.severe("Failed to remove invite from warp '" + warpName + "': " + e.getMessage());
+        }
+    }
+
+    // 新增檢查玩家是否被邀請的方法
+    public boolean isPlayerInvited(String playerUuid) {
+        try (Connection conn = DriverManager.getConnection(DB_URL)) {
+            String sql = "SELECT 1 FROM warp_invites WHERE warp_name = ? AND invited_uuid = ?";
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setString(1, this.warpName);
+                pstmt.setString(2, playerUuid);
+                ResultSet rs = pstmt.executeQuery();
+                return rs.next();
+            }
+        } catch (SQLException e) {
+            logger.severe("Failed to check if player is invited to warp '" + warpName + "': " + e.getMessage());
+            return false;
+        }
+    }
+
+    // 新增獲取被邀請玩家列表的方法
+    public List<WarpInvite> getInvitedPlayers() {
+        List<WarpInvite> invites = new ArrayList<>();
+        try (Connection conn = DriverManager.getConnection(DB_URL)) {
+            String sql = "SELECT * FROM warp_invites WHERE warp_name = ?";
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setString(1, this.warpName);
+                ResultSet rs = pstmt.executeQuery();
+                while (rs.next()) {
+                    invites.add(new WarpInvite(
+                            rs.getString("warp_name"),
+                            rs.getString("invited_uuid"),
+                            rs.getString("invited_name"),
+                            rs.getString("invited_at")
+                    ));
+                }
+            }
+        } catch (SQLException e) {
+            logger.severe("Failed to get invited players for warp '" + warpName + "': " + e.getMessage());
+        }
+        return invites;
+    }
 }

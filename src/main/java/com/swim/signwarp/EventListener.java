@@ -321,12 +321,14 @@ public class EventListener implements Listener {
         UUID playerId = player.getUniqueId();
         Warp warp = Warp.getByName(signData.warpName);
         if (warp != null && warp.isPrivate()) {
-            // 檢查是否為私人傳送點且玩家有權限使用
-            if (!warp.getCreatorUuid().equals(player.getUniqueId().toString())
-                    && !player.hasPermission("signwarp.admin")) {
+            boolean canUse = warp.getCreatorUuid().equals(player.getUniqueId().toString()) || // 是創建者
+                    player.hasPermission("signwarp.admin") || // 是管理員
+                    warp.isPlayerInvited(player.getUniqueId().toString()); // 被邀請的玩家
+
+            if (!canUse) {
                 // 從配置檔獲取錯誤訊息
                 String privateWarpMessage = config.getString("messages.private_warp",
-                        "&c這是一個私人傳送點，只有創建者可以使用。");
+                        "&c這是一個私人傳送點，只有創建者和被邀請的玩家可以使用。");
                 player.sendMessage(ChatColor.translateAlternateColorCodes('&', privateWarpMessage));
                 return;
             }
@@ -424,25 +426,31 @@ public class EventListener implements Listener {
             }
             return;
         }
-        if (warp.isPrivate() && !warp.getCreatorUuid().equals(player.getUniqueId().toString())
-                && !player.hasPermission("signwarp.admin")) {
-            String privateWarpMessage = config.getString("messages.private_warp",
-                    "&c這是一個私人傳送點，只有創建者可以使用。");
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', privateWarpMessage));
-            // 如果之前已經扣除了物品，要返還
-            UUID playerUUID = player.getUniqueId();
-            if (pendingItemCosts.containsKey(playerUUID)) {
-                String useItem = config.getString("use-item", "none");
-                if (!"none".equalsIgnoreCase(useItem)) {
-                    Material material = Material.getMaterial(useItem.toUpperCase());
-                    if (material != null) {
-                        int cost = pendingItemCosts.get(playerUUID);
-                        player.getInventory().addItem(new ItemStack(material, cost));
+        if (warp.isPrivate()) {
+            boolean canUse = warp.getCreatorUuid().equals(player.getUniqueId().toString()) || // 是創建者
+                    player.hasPermission("signwarp.admin") || // 是管理員
+                    warp.isPlayerInvited(player.getUniqueId().toString()); // 被邀請的玩家
+
+            if (!canUse) {
+                String privateWarpMessage = config.getString("messages.private_warp",
+                        "&c這是一個私人傳送點，只有創建者和被邀請的玩家可以使用。");
+                player.sendMessage(ChatColor.translateAlternateColorCodes('&', privateWarpMessage));
+
+                // 返還已扣除的物品
+                UUID playerUUID = player.getUniqueId();
+                if (pendingItemCosts.containsKey(playerUUID)) {
+                    String useItem = config.getString("use-item", "none");
+                    if (!"none".equalsIgnoreCase(useItem)) {
+                        Material material = Material.getMaterial(useItem.toUpperCase());
+                        if (material != null) {
+                            int cost = pendingItemCosts.get(playerUUID);
+                            player.getInventory().addItem(new ItemStack(material, cost));
+                        }
                     }
+                    pendingItemCosts.remove(playerUUID);
                 }
-                pendingItemCosts.remove(playerUUID);
+                return;
             }
-            return;
         }
         // 讀取傳送延遲（單位：秒）
         int teleportDelay = config.getInt("teleport-delay", 5);
@@ -573,6 +581,39 @@ public class EventListener implements Listener {
             invinciblePlayers.remove(playerUUID);
         }, teleportDelay * 20L); // 延遲時間轉為 tick
         teleportTasks.put(playerUUID, teleportTask);
+    }
+    private boolean canUseWarp(Player player, Warp warp) {
+        // 管理員可以使用所有傳送點
+        if (player.hasPermission("signwarp.admin")) {
+            return true;
+        }
+
+        // 創建者可以使用自己的傳送點
+        if (player.getUniqueId().toString().equals(warp.getCreatorUuid())) {
+            return true;
+        }
+
+        // 如果是公共傳送點，任何人都可以使用
+        if (!warp.isPrivate()) {
+            return true;
+        }
+
+        // 檢查是否被邀請
+        return warp.isPlayerInvited(player.getUniqueId().toString());
+    }
+    private void returnPendingItems(Player player) {
+        UUID playerUUID = player.getUniqueId();
+        if (pendingItemCosts.containsKey(playerUUID)) {
+            String useItem = config.getString("use-item", "none");
+            if (!"none".equalsIgnoreCase(useItem)) {
+                Material material = Material.getMaterial(useItem.toUpperCase());
+                if (material != null) {
+                    int cost = pendingItemCosts.get(playerUUID);
+                    player.getInventory().addItem(new ItemStack(material, cost));
+                }
+            }
+            pendingItemCosts.remove(playerUUID);
+        }
     }
 
     /**
