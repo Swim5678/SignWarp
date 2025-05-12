@@ -314,13 +314,15 @@ public class SWCommand implements CommandExecutor, TabCompleter {
         }
 
         List<WarpInvite> invites = warp.getInvitedPlayers();
-        String header = plugin.getConfig().getString("messages.invite_list")
+        String header = Objects.requireNonNull(plugin.getConfig().getString("messages.invite_list"))
                 .replace("{warp-name}", warpName);
         player.sendMessage(ChatColor.translateAlternateColorCodes('&', header));
 
         if (invites.isEmpty()) {
             String noInvites = plugin.getConfig().getString("messages.no_invites");
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', noInvites));
+            if (noInvites != null) {
+                player.sendMessage(ChatColor.translateAlternateColorCodes('&', noInvites));
+            }
         } else {
             for (WarpInvite invite : invites) {
                 player.sendMessage(ChatColor.GRAY + "- " + invite.getInvitedName());
