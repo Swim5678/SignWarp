@@ -11,7 +11,8 @@ SignWarp 允許玩家放置告示牌，透過簡單的右鍵點擊在它們之�
 SignWarp 完整支援以下玩家狀態的傳送：
 - 騎乘狀態：玩家在騎乘載具時，能連同坐騎一同傳送。
 - 船上實體：如玩家五格內的船有其他實體（如動物或怪物），也能整艘船一起傳送到目的地。
-- 手持韁繩: 如玩家手上有將繩綁住實體，傳送時會跟著一起傳送
+- 手持韁繩 : 如玩家手上有將繩綁住實體，傳送時會跟著一起傳送
+- 私人傳送點 : 可設置成私人傳送點，使其使用權限僅限建立者和被邀請者使用
   
 **注意:** 船上如果有玩家將不會傳送船
 
@@ -25,11 +26,16 @@ SignWarp 完整支援以下玩家狀態的傳送：
 - `signwarp.destroy` - 允許銷毀傳送告示牌（預設：op）
 - `signwarp.private.use` -允許使用其他玩家的傳送點（預設：op）
 - `signwarp.private.set` -允許設定傳送點為公共或私人（預設：所有人）
+- `signwarp.invite` -允許邀請其他玩家使用自己的私人傳送點（預設：所有人）
+- `signwarp.invite.list` -允許查看傳送點的邀請列表
+- `signwarp.invite.admin` -允許管理任何傳送點的邀請列表
 
 ## 命令:
 - `/signwarp reload` - 重新載入配置文件。
 - `/signwarp gui` - 開啟傳送管理 GUI。
 - `/signwarp set <public|private> <傳送點名稱>` - 設定傳送點的使用權限
+- `/signwarp invite/uninvite <玩家名稱> <傳送點名稱>` - 邀請/移除邀請玩家使用某個傳送點
+- `/signwarp list-invites <傳送點名稱>` -查看某個傳送點被邀請的玩家列表(僅限擁有者)
 - 可縮寫 `wp`
 ## 使用方式
 
@@ -52,8 +58,9 @@ SignWarp 完整支援以下玩家狀態的傳送：
 你可以使用以下指令來設定傳送點的使用權限
 
 `/wp set <公共 | 私人> <傳送點名稱>`
+`/signwarp invite/uninvite <玩家名稱> <傳送點名稱>`
 
-- 私人傳送點只能被創建者和管理員使用
+- 私人傳送點只能被創建者和被邀請者使用
 - 公共傳送點所有人都可以使用
 - 只有創建者和管理員可以更改傳送點的可見性
 - 預設的傳送點可見性可在配置文件中設定
@@ -99,6 +106,20 @@ messages:
   cant_modify_others_warp: "&c您只能更改自己創建的傳送點！"
   set_visibility_usage: "&c用法: /wp set <公共|私人> <傳送點名稱>"
   invalid_visibility: "&c使用權限必須是 '公共' 或 '私人'"
+  private_warp: "&c這是一個私人傳送點，只有創建者和被邀請的玩家可以使用。"
+  invite_success: "&a已成功邀請 {player} 使用傳送點 '{warp-name}'！"
+  invite_received: "&a{inviter} 邀請你使用傳送點 '{warp-name}'！"
+  invite_failed: "&c無法邀請玩家使用此傳送點！"
+  uninvite_success: "&a已移除 {player} 使用傳送點 '{warp-name}' 的權限。"
+  player_not_found: "&c找不到玩家 '{player}' 或該玩家離線！"
+  not_your_warp: "&c你只能邀請玩家使用你自己的傳送點！"
+  invite_usage: "&c用法: /wp invite <玩家> <傳送點名稱>"
+  uninvite_usage: "&c用法: /wp uninvite <玩家> <傳送點名稱>"
+  already_invited: "&c玩家 {player} 已經被邀請使用此傳送點！"
+  not_invited: "&c玩家 {player} 未被邀請使用此傳送點。"
+  invite_list: "&a傳送點 '{warp-name}' 的邀請列表:"
+  no_invites: "&e此傳送點尚未邀請任何玩家。"
+  cant_modify_warp: "&c您無法修改此傳送點的邀請名單！"
   ```
 
 - `{warp-name}` : 此佔位符將被替換為告示牌上指定的傳送名稱。
@@ -108,6 +129,8 @@ messages:
 - `{time}` : 此佔位符將被替換為傳送完成前的倒數秒數。
 - `{cooldown}` : 此佔位符將被替換為傳送完成後的冷卻秒數。
 - `{visibility}` : 此佔位符將被替換為傳送點的可見性設定（公共/私人）
+- `{player}` : 佔位符將被替換為玩家名稱
+- `{inviter}` : 佔位符將被替換為擁有者名稱
 
 你可以使用 Minecraft 顏色代碼來美化文字。這些代碼以 & 字符開頭，後面跟著代表特定顏色的字母或數字。 [更多資訊](https://www.digminecraft.com/lists/color_list_pc.php)
 
