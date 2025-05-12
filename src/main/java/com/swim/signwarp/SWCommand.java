@@ -24,9 +24,12 @@ public class SWCommand implements CommandExecutor, TabCompleter {
     }
 
     @Override
-    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String[] args) {
+    public boolean onCommand(@NotNull CommandSender sender,
+                             @NotNull Command command,
+                             @NotNull String label,
+                             String[] args) {
         if (args.length == 0) {
-            sender.sendMessage("Usage: /signwarp <gui/reload/set/invite/uninvite/list-invites>");
+            sender.sendMessage("Usage: /signwarp <gui/reload/set/invite/uninvite/list-invites/tp>");
             return true;
         }
 
@@ -62,7 +65,12 @@ public class SWCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        sender.sendMessage("Unknown subcommand. Usage: /signwarp <gui/reload/set/invite/uninvite/list-invites>");
+        // 僅限 OP 傳送指定 Warp
+        if (args[0].equalsIgnoreCase("tp")) {
+            return handleWptCommand(sender, args);
+        }
+
+        sender.sendMessage("Unknown subcommand. Usage: /signwarp <gui/reload/set/invite/uninvite/list-invites/tp>");
         return true;
     }
 
@@ -72,7 +80,8 @@ public class SWCommand implements CommandExecutor, TabCompleter {
                 WarpGui.openWarpGui(player, 0);
             } else {
                 sender.sendMessage(ChatColor.translateAlternateColorCodes('&',
-                        plugin.getConfig().getString("messages.not_permission", "You don't have permission to use this command.")));
+                        plugin.getConfig().getString("messages.not_permission",
+                                "You don't have permission to use this command.")));
             }
         } else {
             sender.sendMessage("This command can only be executed by a player.");
@@ -86,7 +95,8 @@ public class SWCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage(ChatColor.GREEN + "配置已重新載入");
         } else {
             sender.sendMessage(ChatColor.translateAlternateColorCodes('&',
-                    plugin.getConfig().getString("messages.not_permission", "You don't have permission to use this command.")));
+                    plugin.getConfig().getString("messages.not_permission",
+                            "You don't have permission to use this command.")));
         }
     }
 
@@ -95,38 +105,33 @@ public class SWCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage("This command can only be executed by a player.");
             return;
         }
-
         if (args.length < 3) {
-            String message = plugin.getConfig().getString("messages.set_visibility_usage",
+            String msg = plugin.getConfig().getString("messages.set_visibility_usage",
                     "&c用法: /wp set <公共|私人> <傳送點名稱>");
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&', msg));
             return;
         }
-
         String visibility = args[1].toLowerCase();
         if (!visibility.equals("公共") && !visibility.equals("私人")) {
-            String message = plugin.getConfig().getString("messages.invalid_visibility",
+            String msg = plugin.getConfig().getString("messages.invalid_visibility",
                     "&c使用權限必須是 '公共' 或 '私人'");
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&', msg));
             return;
         }
-
         String warpName = args[2];
         Warp warp = Warp.getByName(warpName);
         if (warp == null) {
             player.sendMessage(ChatColor.RED + "找不到傳送點: " + warpName);
             return;
         }
-
         if (!canModifyWarp(player, warp)) {
-            String message = plugin.getConfig().getString("messages.cant_modify_others_warp",
+            String msg = plugin.getConfig().getString("messages.cant_modify_others_warp",
                     "&c您只能更改自己創建的傳送點！");
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&', msg));
             return;
         }
-
         boolean isPrivate = visibility.equals("私人");
-        Warp updatedWarp = new Warp(
+        Warp updated = new Warp(
                 warp.getName(),
                 warp.getLocation(),
                 warp.getFormattedCreatedAt(),
@@ -134,13 +139,12 @@ public class SWCommand implements CommandExecutor, TabCompleter {
                 warp.getCreatorUuid(),
                 isPrivate
         );
-        updatedWarp.save();
-
-        String message = plugin.getConfig().getString("messages.warp_visibility_changed",
+        updated.save();
+        String msg = plugin.getConfig().getString("messages.warp_visibility_changed",
                         "&a傳送點 {warp-name} 的使用權限已更改為{visibility}。")
                 .replace("{warp-name}", warpName)
                 .replace("{visibility}", visibility);
-        player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
+        player.sendMessage(ChatColor.translateAlternateColorCodes('&', msg));
     }
 
     private void handleInviteCommand(CommandSender sender, String[] args) {
@@ -148,66 +152,55 @@ public class SWCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage("This command can only be executed by a player.");
             return;
         }
-
         if (!player.hasPermission("signwarp.invite")) {
             player.sendMessage(ChatColor.translateAlternateColorCodes('&',
                     Objects.requireNonNull(plugin.getConfig().getString("messages.not_permission"))));
             return;
         }
-
         if (args.length < 3) {
-            String message = plugin.getConfig().getString("messages.invite_usage");
-            if (message != null) {
-                player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
+            String msg = plugin.getConfig().getString("messages.invite_usage");
+            if (msg != null) {
+                player.sendMessage(ChatColor.translateAlternateColorCodes('&', msg));
             }
             return;
         }
-
-        String targetPlayerName = args[1];
-        String warpName = args[2];
-
-        Player targetPlayer = Bukkit.getPlayer(targetPlayerName);
+        String target = args[1], warpName = args[2];
+        Player targetPlayer = Bukkit.getPlayer(target);
         if (targetPlayer == null) {
-            String message = Objects.requireNonNull(plugin.getConfig().getString("messages.player_not_found"))
-                    .replace("{player}", targetPlayerName);
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
+            String msg = Objects.requireNonNull(
+                            plugin.getConfig().getString("messages.player_not_found"))
+                    .replace("{player}", target);
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&', msg));
             return;
         }
-
         Warp warp = Warp.getByName(warpName);
         if (warp == null) {
             player.sendMessage(ChatColor.RED + "找不到傳送點: " + warpName);
             return;
         }
-
         if (!canModifyWarp(player, warp)) {
-            String message = plugin.getConfig().getString("messages.not_your_warp");
-            if (message != null) {
-                player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
-            }
+            String msg = plugin.getConfig().getString("messages.not_your_warp");
+            if (msg != null) player.sendMessage(ChatColor.translateAlternateColorCodes('&', msg));
             return;
         }
-
         if (warp.isPlayerInvited(targetPlayer.getUniqueId().toString())) {
-            String message = Objects.requireNonNull(plugin.getConfig().getString("messages.already_invited"))
+            String msg = Objects.requireNonNull(
+                            plugin.getConfig().getString("messages.already_invited"))
                     .replace("{player}", targetPlayer.getName());
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&', msg));
             return;
         }
-
         warp.invitePlayer(targetPlayer);
-
-        // 發送成功訊息給邀請者
-        String inviteSuccess = Objects.requireNonNull(plugin.getConfig().getString("messages.invite_success"))
+        String msg = Objects.requireNonNull(
+                        plugin.getConfig().getString("messages.invite_success"))
                 .replace("{player}", targetPlayer.getName())
                 .replace("{warp-name}", warpName);
-        player.sendMessage(ChatColor.translateAlternateColorCodes('&', inviteSuccess));
-
-        // 發送通知給被邀請者
-        String inviteReceived = Objects.requireNonNull(plugin.getConfig().getString("messages.invite_received"))
+        player.sendMessage(ChatColor.translateAlternateColorCodes('&', msg));
+        String recv = Objects.requireNonNull(
+                        plugin.getConfig().getString("messages.invite_received"))
                 .replace("{inviter}", player.getName())
                 .replace("{warp-name}", warpName);
-        targetPlayer.sendMessage(ChatColor.translateAlternateColorCodes('&', inviteReceived));
+        targetPlayer.sendMessage(ChatColor.translateAlternateColorCodes('&', recv));
     }
 
     private void handleUninviteCommand(CommandSender sender, String[] args) {
@@ -215,65 +208,53 @@ public class SWCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage("This command can only be executed by a player.");
             return;
         }
-
         if (!player.hasPermission("signwarp.invite")) {
-            String message = plugin.getConfig().getString("messages.not_permission", "&c您沒有權限！");
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
+            String msg = plugin.getConfig().getString("messages.not_permission",
+                    "&c您沒有權限！");
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&', msg));
             return;
         }
-
         if (args.length < 3) {
-            String message = plugin.getConfig().getString("messages.uninvite_usage",
+            String msg = plugin.getConfig().getString("messages.uninvite_usage",
                     "&c用法: /wp uninvite <玩家> <傳送點名稱>");
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&', msg));
             return;
         }
-
-        String targetPlayerName = args[1];
-        String warpName = args[2];
-
+        String target = args[1], warpName = args[2];
         Warp warp = Warp.getByName(warpName);
         if (warp == null) {
             player.sendMessage(ChatColor.RED + "找不到傳送點: " + warpName);
             return;
         }
-
-        // 修改權限檢查和錯誤訊息
         boolean isOwner = warp.getCreatorUuid().equals(player.getUniqueId().toString());
         boolean isAdmin = player.hasPermission("signwarp.admin");
-
         if (!isOwner && !isAdmin) {
-            // 改用更合適的錯誤訊息
-            String message = plugin.getConfig().getString("messages.cant_modify_warp",
+            String msg = plugin.getConfig().getString("messages.cant_modify_warp",
                     "&c您無法修改此傳送點的邀請名單！");
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&', msg));
             return;
         }
-
-        Player targetPlayer = Bukkit.getPlayer(targetPlayerName);
-        if (targetPlayer == null) {
-            String message = plugin.getConfig().getString("messages.player_not_found",
+        Player tgt = Bukkit.getPlayer(target);
+        if (tgt == null) {
+            String msg = plugin.getConfig().getString("messages.player_not_found",
                             "&c找不到玩家 '{player}' 或該玩家離線！")
-                    .replace("{player}", targetPlayerName);
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
+                    .replace("{player}", target);
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&', msg));
             return;
         }
-
-        if (!warp.isPlayerInvited(targetPlayer.getUniqueId().toString())) {
-            String message = plugin.getConfig().getString("messages.not_invited",
+        if (!warp.isPlayerInvited(tgt.getUniqueId().toString())) {
+            String msg = plugin.getConfig().getString("messages.not_invited",
                             "&c玩家 {player} 未被邀請使用此傳送點。")
-                    .replace("{player}", targetPlayer.getName());
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
+                    .replace("{player}", tgt.getName());
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&', msg));
             return;
         }
-
-        warp.removeInvite(targetPlayer.getUniqueId().toString());
-
-        String message = plugin.getConfig().getString("messages.uninvite_success",
+        warp.removeInvite(tgt.getUniqueId().toString());
+        String msg = plugin.getConfig().getString("messages.uninvite_success",
                         "&a已移除 {player} 使用傳送點 '{warp-name}' 的權限。")
-                .replace("{player}", targetPlayer.getName())
+                .replace("{player}", tgt.getName())
                 .replace("{warp-name}", warpName);
-        player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
+        player.sendMessage(ChatColor.translateAlternateColorCodes('&', msg));
     }
 
     private void handleListInvitesCommand(CommandSender sender, String[] args) {
@@ -281,87 +262,108 @@ public class SWCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage("This command can only be executed by a player.");
             return;
         }
-
         if (args.length < 2) {
             player.sendMessage(ChatColor.RED + "用法: /wp list-invites <傳送點名稱>");
             return;
         }
-
         String warpName = args[1];
         Warp warp = Warp.getByName(warpName);
         if (warp == null) {
             player.sendMessage(ChatColor.RED + "找不到傳送點: " + warpName);
             return;
         }
-
-        // 修改權限檢查邏輯
-        // 檢查是否是自己的傳送點或是否有管理員權限
         boolean isOwner = warp.getCreatorUuid().equals(player.getUniqueId().toString());
         boolean isAdmin = player.hasPermission("signwarp.admin");
-
-        // 如果不是自己的傳送點，需要特殊權限
         if (!isOwner && !player.hasPermission("signwarp.invite.list")) {
-            String message = plugin.getConfig().getString("messages.not_permission", "&c您沒有權限！");
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
+            String msg = plugin.getConfig().getString("messages.not_permission",
+                    "&c您沒有權限！");
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&', msg));
             return;
         }
-
-        // 如果是別人的傳送點，且沒有管理員權限
         if (!isOwner && !isAdmin) {
-            String message = plugin.getConfig().getString("messages.not_permission", "&c您沒有權限！");
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
+            String msg = plugin.getConfig().getString("messages.not_permission",
+                    "&c您沒有權限！");
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&', msg));
             return;
         }
-
         List<WarpInvite> invites = warp.getInvitedPlayers();
-        String header = Objects.requireNonNull(plugin.getConfig().getString("messages.invite_list"))
+        String header = Objects.requireNonNull(
+                        plugin.getConfig().getString("messages.invite_list"))
                 .replace("{warp-name}", warpName);
         player.sendMessage(ChatColor.translateAlternateColorCodes('&', header));
-
         if (invites.isEmpty()) {
-            String noInvites = plugin.getConfig().getString("messages.no_invites");
-            if (noInvites != null) {
-                player.sendMessage(ChatColor.translateAlternateColorCodes('&', noInvites));
-            }
+            String none = plugin.getConfig().getString("messages.no_invites");
+            if (none != null) player.sendMessage(ChatColor.translateAlternateColorCodes('&', none));
         } else {
-            for (WarpInvite invite : invites) {
-                player.sendMessage(ChatColor.GRAY + "- " + invite.getInvitedName());
+            for (WarpInvite wi : invites) {
+                player.sendMessage(ChatColor.GRAY + "- " + wi.getInvitedName());
             }
         }
     }
 
     private boolean canModifyWarp(Player player, Warp warp) {
-        return warp.getCreatorUuid().equals(player.getUniqueId().toString()) ||
-                player.hasPermission("signwarp.admin");
+        return warp.getCreatorUuid().equals(player.getUniqueId().toString())
+                || player.hasPermission("signwarp.admin");
+    }
+
+    /**
+     * OP 專用：/signwarp tp <傳送點名稱>
+     */
+    private boolean handleWptCommand(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage("This command can only be executed by a player.");
+            return true;
+        }
+        if (!player.isOp()) {
+            player.sendMessage(ChatColor.RED + "只有伺服器 OP 可以使用此指令。");
+            return true;
+        }
+        if (args.length < 2) {
+            player.sendMessage(ChatColor.YELLOW + "用法: /signwarp tp <傳送點名稱>");
+            return true;
+        }
+        String warpName = args[1];
+        Warp warp = Warp.getByName(warpName);
+        if (warp == null) {
+            player.sendMessage(ChatColor.RED + "找不到傳送點: " + warpName);
+            return true;
+        }
+        player.teleport(warp.getLocation());
+        player.sendMessage(ChatColor.GREEN + "已傳送到 Warp: " + warp.getName() +
+                " (建立者: " + warp.getCreator() + ")");
+        return true;
     }
 
     @Override
-    public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, String[] args) {
+    public List<String> onTabComplete(@NotNull CommandSender sender,
+                                      @NotNull Command command,
+                                      @NotNull String alias,
+                                      String[] args) {
         List<String> completions = new ArrayList<>();
 
         if (args.length == 1) {
-            // 主要指令補全
-            List<String> commands = new ArrayList<>();
-            if (sender.hasPermission("signwarp.admin")) commands.add("gui");
-            if (sender.hasPermission("signwarp.reload")) commands.add("reload");
-            commands.add("set");
+            List<String> cmds = new ArrayList<>();
+            if (sender.hasPermission("signwarp.admin")) cmds.add("gui");
+            if (sender.hasPermission("signwarp.reload")) cmds.add("reload");
+            cmds.add("set");
             if (sender.hasPermission("signwarp.invite")) {
-                commands.add("invite");
-                commands.add("uninvite");
-                commands.add("list-invites");
+                cmds.add("invite");
+                cmds.add("uninvite");
+                cmds.add("list-invites");
             }
-
-            for (String cmd : commands) {
-                if (cmd.toLowerCase().startsWith(args[0].toLowerCase())) {
-                    completions.add(cmd);
+            if (sender instanceof Player p && p.isOp()) {
+                cmds.add("tp");
+            }
+            for (String c : cmds) {
+                if (c.toLowerCase().startsWith(args[0].toLowerCase())) {
+                    completions.add(c);
                 }
             }
         }
         else if (args.length == 2) {
             switch (args[0].toLowerCase()) {
                 case "set":
-                    String[] visibilities = {"公共", "私人"};
-                    for (String v : visibilities) {
+                    for (String v : new String[]{"公共","私人"}) {
                         if (v.toLowerCase().startsWith(args[1].toLowerCase())) {
                             completions.add(v);
                         }
@@ -369,27 +371,31 @@ public class SWCommand implements CommandExecutor, TabCompleter {
                     break;
                 case "invite":
                 case "uninvite":
-                    // 線上玩家補全
-                    Bukkit.getOnlinePlayers().forEach(player -> {
-                        if (player.getName().toLowerCase().startsWith(args[1].toLowerCase())) {
-                            completions.add(player.getName());
+                    Bukkit.getOnlinePlayers().forEach(pl -> {
+                        if (pl.getName().toLowerCase().startsWith(args[1].toLowerCase())) {
+                            completions.add(pl.getName());
                         }
                     });
                     break;
                 case "list-invites":
-                    // 傳送點補全
-                    if (sender instanceof Player player) {
-                        completions.addAll(getAccessibleWarps(player, args[1]));
+                    if (sender instanceof Player pl) {
+                        completions.addAll(getAccessibleWarps(pl, args[1]));
                     }
+                    break;
+                case "tp":
+                    // 列出所有 Warp 名稱給 OP 補全
+                    Warp.getAll().stream()
+                            .map(Warp::getName)
+                            .filter(n -> n.toLowerCase().startsWith(args[1].toLowerCase()))
+                            .forEach(completions::add);
                     break;
             }
         }
-        else if (args.length == 3 && (args[0].equalsIgnoreCase("set") ||
-                args[0].equalsIgnoreCase("invite") ||
-                args[0].equalsIgnoreCase("uninvite"))) {
-            // 傳送點補全
-            if (sender instanceof Player player) {
-                completions.addAll(getAccessibleWarps(player, args[2]));
+        else if (args.length == 3 && (args[0].equalsIgnoreCase("set")
+                || args[0].equalsIgnoreCase("invite")
+                || args[0].equalsIgnoreCase("uninvite"))) {
+            if (sender instanceof Player pl) {
+                completions.addAll(getAccessibleWarps(pl, args[2]));
             }
         }
 
@@ -398,10 +404,10 @@ public class SWCommand implements CommandExecutor, TabCompleter {
 
     private List<String> getAccessibleWarps(Player player, String prefix) {
         return Warp.getAll().stream()
-                .filter(warp -> warp.getCreatorUuid().equals(player.getUniqueId().toString())
+                .filter(w -> w.getCreatorUuid().equals(player.getUniqueId().toString())
                         || player.hasPermission("signwarp.admin"))
                 .map(Warp::getName)
-                .filter(name -> name.toLowerCase().startsWith(prefix.toLowerCase()))
+                .filter(n -> n.toLowerCase().startsWith(prefix.toLowerCase()))
                 .collect(Collectors.toList());
     }
 }

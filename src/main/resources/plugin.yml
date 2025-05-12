@@ -13,6 +13,7 @@ commands:
       /wp invite <玩家> <傳送點名稱> - 邀請玩家使用私人傳送點
       /wp uninvite <玩家> <傳送點名稱> - 移除玩家的傳送點使用權限
       /wp list-invites <傳送點名稱> - 查看傳送點的邀請列表
+      /wp tp <傳送點名稱> - OP 專用，快速傳送到指定傳送點
     aliases: ["wp"]
 permissions:
   signwarp.*:
@@ -27,6 +28,7 @@ permissions:
       - signwarp.invite
       - signwarp.invite.list
       - signwarp.invite.admin
+      - signwarp.wpt
   signwarp.create:
     description: "允許創建傳送點告示牌"
     default: op
@@ -56,4 +58,7 @@ permissions:
     default: true
   signwarp.invite.admin:
     description: "允許管理任何傳送點的邀請列表"
+    default: op
+  signwarp.tp:
+    description: "允許使用 /wp wpt 指令（OP 專用）"
     default: op
