@@ -1,153 +1,212 @@
-# SignWarp
+# 🚀 SignWarp
 
-一個使用告示牌進行傳送的 Paper 插件
-**(Minecraft 版本 1.21.4+)**
+<div align="center">
 
-SignWarp 允許玩家放置告示牌，透過簡單的右鍵點擊在它們之間進行傳送。
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Minecraft Version](https://img.shields.io/badge/Minecraft-1.21.4+-green.svg)](https://www.minecraft.net/)
+[![Paper](https://img.shields.io/badge/Paper-Required-blue.svg)](https://papermc.io/)
 
-預設情況下，傳送會消耗一個終界珍珠（玩家在與告示牌互動時必須持有此物品），但此設定可在配置文件中禁用。
+**一個功能豐富且易於使用的 Minecraft Paper 插件，讓玩家透過告示牌輕鬆建立傳送系統**
 
-## 傳送狀態支援
-SignWarp 完整支援以下玩家狀態的傳送：
-- 騎乘狀態：玩家在騎乘載具時，能連同坐騎一同傳送。
-- 船上實體：如玩家五格內的船有其他實體（如動物或怪物），也能整艘船一起傳送到目的地。
-- 手持韁繩 : 如玩家手上有將繩綁住實體，傳送時會跟著一起傳送
-- 私人傳送點 : 可設置成私人傳送點，使其使用權限僅限建立者和被邀請者使用
-  
-**注意:** 船上如果有玩家將不會傳送船
+[功能特色](#-功能特色) • [安裝說明](#-安裝說明) • [使用方式](#-使用方式) • [配置設定](#-配置設定) • [權限系統](#-權限系統)
 
-## 權限設定
+</div>
 
-- `signwarp.create` - 允許創建傳送告示牌（預設：op）
-- `signwarp.use` - 允許使用傳送告示牌（預設：所有人）
-- `signwarp.reload` -  允許重新載入配置文件（預設：op）
-- `signwarp.admin` - 允許進入傳送管理 GUI（預設：op）
-- `signwarp.*` - 允許使用所有功能（預設：op）
-- `signwarp.destroy` - 允許銷毀傳送告示牌（預設：op）
-- `signwarp.private.use` -允許使用其他玩家的傳送點（預設：op）
-- `signwarp.private.set` -允許設定傳送點為公共或私人（預設：所有人）
-- `signwarp.invite` -允許邀請其他玩家使用自己的私人傳送點（預設：所有人）
-- `signwarp.invite.list` -允許查看傳送點的邀請列表
-- `signwarp.invite.admin` -允許管理任何傳送點的邀請列表
+---
 
-## 命令:
-- `/signwarp reload` - 重新載入配置文件。
-- `/signwarp gui` - 開啟傳送管理 GUI。
-- `/signwarp set <public|private> <傳送點名稱>` - 設定傳送點的使用權限
-- `/signwarp invite/uninvite <玩家名稱> <傳送點名稱>` - 邀請/移除邀請玩家使用某個傳送點
-- `/signwarp list-invites <傳送點名稱>` -查看某個傳送點被邀請的玩家列表(僅限擁有者)
-- 可縮寫 `wp`
-## 使用方式
+## 📖 簡介
 
-首先，在你希望設置傳送點的位置放置一個告示牌，並填入以下內容：
+SignWarp 是一款專為 Minecraft Paper 伺服器設計的傳送插件，讓玩家能夠透過簡單的告示牌系統建立個人或公共的傳送點。無論是建立城市間的交通網絡，還是設置私人基地的快速通道，SignWarp 都能滿足您的需求。
 
-- 第一行： **[WarpTarget]** 或 **[WPT]** 或 **[wpt]**
-- 第二行：你想要使用的名稱
+## ✨ 功能特色
 
-這樣會建立一個傳送告示牌，該告示牌設定了玩家傳送的目的地。
+### 🎯 核心功能
+- **📝 簡易告示牌系統** - 透過放置告示牌輕鬆建立傳送點
+- **🔐 權限管理** - 支援公共與私人傳送點設定
+- **👥 邀請系統** - 允許分享私人傳送點給特定玩家
+- **🎮 管理介面** - 提供 GUI 管理所有傳送點
+- **⚡ 即時傳送** - 支援多種傳送狀態與載具
 
-建立傳送目標告示牌後，再建立一個或多個作為傳送來源的告示牌，用以傳送到目標告示牌。
-方法是放置一個告示牌並填入以下內容：
+### 🚗 進階傳送支援
+- **🐎 騎乘傳送** - 騎馬、豬等載具時一同傳送
+- **⛵ 船隻傳送** - 包含船上的實體（動物、怪物）一起傳送
+- **🪢 韁繩傳送** - 手持韁繩時連同綁定實體一起傳送
+- **🛡️ 安全機制** - 船上有其他玩家時不會進行傳送
 
-- 第一行：**[Warp]** 或 **[WP]** 或 **[wp]**
-- 第二行：你想要使用的名稱
+### 🎨 自訂化選項
+- **💬 訊息自訂** - 完全可自訂的插件訊息
+- **🔊 音效特效** - 可配置傳送音效與視覺效果
+- **⏱️ 冷卻系統** - 可設定傳送延遲與冷卻時間
+- **💎 物品消耗** - 可設定傳送所需物品（預設：終界珍珠）
 
-**注意：目標告示牌（WarpTarget）必須先存在，再建立傳送來源告示牌！**
+## 🛠️ 安裝說明
 
-### 設定傳送點使用權限
-你可以使用以下指令來設定傳送點的使用權限
+### 系統需求
+- **Minecraft 版本**: 1.21.4 或更高版本
+- **伺服器軟體**: Paper（推薦）或其他基於 Paper 的核心
+- **Java 版本**: Java 21 或更高版本
 
-`/wp set <公共 | 私人> <傳送點名稱>`
-`/signwarp invite/uninvite <玩家名稱> <傳送點名稱>`
+### 安裝步驟
+1. 下載最新版本的 SignWarp.jar 檔案
+2. 將檔案放入伺服器的 `plugins` 資料夾
+3. 重新啟動伺服器
+4. 編輯 `plugins/SignWarp/config.yml` 來自訂設定（可選）
 
-- 私人傳送點只能被創建者和被邀請者使用
-- 公共傳送點所有人都可以使用
-- 只有創建者和管理員可以更改傳送點的可見性
-- 預設的傳送點可見性可在配置文件中設定
+## 🎮 使用方式
 
-建立好兩種告示牌後，你可以使用配置中設定的 `use-item` 右鍵點擊（預設為終界珍珠）來啟動傳送。
-每次傳送將消耗配置中設定的物品數量（預設：1）。
+### 建立傳送目標 (WarpTarget)
 
-你可以在 config.yml 中 `use-item` 將其設為 "none"，這樣任何物品都可以觸發傳送（即每次傳送免費）。
+1. **放置告示牌** 在您想要設置為傳送目的地的位置
+2. **編輯告示牌內容**：
+   ```
+   第一行: [WarpTarget] 或 [WPT] 或 [wpt]
+   第二行: 傳送點名稱（例如：家）
+   ```
 
-目標告示牌（WarpTarget）預設建立玩家和OP有權限破壞
-## 管理 GUI
+### 建立傳送來源 (Warp)
 
-![Warps Admin](https://i.imgur.com/60JLVPC.gif)
+1. **放置告示牌** 在您想要作為傳送起點的位置
+2. **編輯告示牌內容**：
+   ```
+   第一行: [Warp] 或 [WP] 或 [wp]
+   第二行: 目標傳送點名稱（必須已存在））
+   ```
 
-GUI 中會顯示傳送點的可見性狀態（公共/私人）
-## 訊息自訂
+### 使用傳送
 
-在 `config.yml` 配置文件中，你可以自訂插件使用的訊息。 這些訊息定義在 `messages` 這個區塊下，可以依據你的喜好進行修改。
+1. **手持所需物品**（預設：終界珍珠）
+2. **右鍵點擊** 傳送來源告示牌
+3. **等待倒數** 完成後即可傳送
 
-**預覽：**
+> ⚠️ **重要提醒**: 必須先建立傳送目標 (WarpTarget) 才能建立對應的傳送來源 (Warp)
+
+## 🔧 配置設定
+
+### 基本設定
+
+```yaml
+# 使用傳送所需物品（設為 none 表示免費）
+use-item: ENDER_PEARL
+
+# 每次傳送消耗數量
+use-cost: 1
+
+# 傳送前延遲時間（秒）
+teleport-delay: 5
+
+# 傳送後冷卻時間（秒）
+teleport-use-cooldown: 10
+
+# 預設傳送點可見性（false=公共, true=私人）
+default-visibility: false
+```
+
+### 建造成本設定
+
+```yaml
+# 建立傳送目標所需物品
+create-wpt-item: "DIAMOND_SWORD"
+
+# 建立傳送目標消耗數量
+create-wpt-item-cost: 1
+```
+
+### 音效與特效
+
+```yaml
+# 傳送音效
+teleport-sound: minecraft:entity.enderman.teleport
+
+# 傳送特效
+teleport-effect: ENDER_SIGNAL
+```
+
+## 🎯 指令系統
+
+| 指令 | 縮寫 | 功能描述 | 權限需求 |
+|------|------|----------|----------|
+| `/signwarp reload` | `/wp reload` | 重新載入配置檔案 | `signwarp.reload` |
+| `/signwarp gui` | `/wp gui` | 開啟管理介面 | `signwarp.admin` |
+| `/signwarp set <公共\|私人> <傳送點>` | `/wp set` | 設定傳送點可見性 | `signwarp.private.set` |
+| `/signwarp invite <玩家> <傳送點>` | `/wp invite` | 邀請玩家使用私人傳送點 | `signwarp.invite` |
+| `/signwarp uninvite <玩家> <傳送點>` | `/wp uninvite` | 移除玩家邀請 | `signwarp.invite` |
+| `/signwarp list-invites <傳送點>` | `/wp list-invites` | 查看邀請列表 | `signwarp.invite.list` |
+| `/signwarp tp <傳送點>` | `/wp tp` | 直接傳送（管理員） | `signwarp.tp` |
+
+## 🔐 權限系統
+
+### 基礎權限
+
+| 權限節點 | 預設 | 描述 |
+|----------|------|------|
+| `signwarp.*` | OP | 所有權限 |
+| `signwarp.create` | OP | 建立傳送告示牌 |
+| `signwarp.use` | 所有人 | 使用傳送功能 |
+| `signwarp.destroy` | OP | 破壞傳送告示牌 |
+| `signwarp.admin` | OP | 使用管理功能 |
+| `signwarp.reload` | OP | 重新載入配置 |
+
+### 進階權限
+
+| 權限節點 | 預設 | 描述 |
+|----------|------|------|
+| `signwarp.private.use` | OP | 使用他人私人傳送點 |
+| `signwarp.private.set` | 所有人 | 設定傳送點可見性 |
+| `signwarp.invite` | 所有人 | 邀請/移除邀請功能 |
+| `signwarp.invite.list` | 所有人 | 查看邀請列表 |
+| `signwarp.invite.admin` | OP | 管理任何傳送點邀請 |
+| `signwarp.tp` | OP | 直接傳送指令 |
+
+## 📱 管理介面
+
+SignWarp 提供直觀的 GUI 管理介面，讓管理員能夠：
+
+- 📋 查看所有傳送點列表
+- 🔍 檢視傳送點詳細資訊
+- 👁️ 查看傳送點可見性狀態
+
+使用 `/wp gui` 指令開啟管理介面。
+
+![管理介面預覽](https://i.imgur.com/60JLVPC.gif)
+
+## 🎨 訊息自訂
+
+所有插件訊息都可以在 `config.yml` 中自訂，支援 Minecraft 顏色代碼：
 
 ```yaml
 messages:
-  create_permission: "&c您沒有權限建立傳送標誌！"
-  no_warp_name: "&c未設定傳送名稱！\n請在第二行設定傳送名稱。"
-  warp_created: "&a傳送標誌已成功建立。"
-  warp_name_taken: "&c已有相同名稱的傳送目標！"
-  warp_destroyed: "&a傳送目標已被摧毀。"
-  target_sign_created: "&a傳送目標標誌已成功建立。"
-  destroy_permission: "&c您沒有權限摧毀傳送標誌！"
-  invalid_item: "&c您必須使用 {use-item} 來啟用此傳送！"
-  not_enough_item: "&c您沒有足夠的 {use-item} x{use-cost} 來建立此傳送標誌。"
-  warp_not_found: "&c指定的傳送目標不存在！"
-  use_permission: "&c您沒有權限使用此傳送標誌！"
-  teleport: "&e正在傳送到 {warp-name}，{time} 秒後到達..."
-  teleport-success: "&a成功傳送到 {warp-name}。"
-  teleport-cancelled: "&c傳送已取消。"
-  notify-cost: "&a您已被收取 {cost} 金幣進行傳送。"
-  not_permission: "&c您沒有權限！"
-  cooldown: "&c您必須等待 {cooldown} 秒才能再次傳送。"
-  private_warp: "&c這是一個私人傳送點，只有創建者可以使用。"
-  warp_visibility_changed: "&a傳送點 {warp-name} 的使用權限已更改為{visibility}。"
-  cant_modify_others_warp: "&c您只能更改自己創建的傳送點！"
-  set_visibility_usage: "&c用法: /wp set <公共|私人> <傳送點名稱>"
-  invalid_visibility: "&c使用權限必須是 '公共' 或 '私人'"
-  private_warp: "&c這是一個私人傳送點，只有創建者和被邀請的玩家可以使用。"
-  invite_success: "&a已成功邀請 {player} 使用傳送點 '{warp-name}'！"
-  invite_received: "&a{inviter} 邀請你使用傳送點 '{warp-name}'！"
-  invite_failed: "&c無法邀請玩家使用此傳送點！"
-  uninvite_success: "&a已移除 {player} 使用傳送點 '{warp-name}' 的權限。"
-  player_not_found: "&c找不到玩家 '{player}' 或該玩家離線！"
-  not_your_warp: "&c你只能邀請玩家使用你自己的傳送點！"
-  invite_usage: "&c用法: /wp invite <玩家> <傳送點名稱>"
-  uninvite_usage: "&c用法: /wp uninvite <玩家> <傳送點名稱>"
-  already_invited: "&c玩家 {player} 已經被邀請使用此傳送點！"
-  not_invited: "&c玩家 {player} 未被邀請使用此傳送點。"
-  invite_list: "&a傳送點 '{warp-name}' 的邀請列表:"
-  no_invites: "&e此傳送點尚未邀請任何玩家。"
-  cant_modify_warp: "&c您無法修改此傳送點的邀請名單！"
-  ```
-
-- `{warp-name}` : 此佔位符將被替換為告示牌上指定的傳送名稱。
-- `{use-item}` : 此佔位符代表使用傳送所需的物品名稱。例如，如果需要的物品是終界珍珠，則此佔位符將被替換為 "ENDER_PEARL"。
-- `{use-cost}` : 此佔位符將被替換為使用傳送所需的物品數量。例如，如果傳送成本為 1 個終界珍珠，則此佔位符將被替換為 "1"。
-- `{cost}` : 此佔位符將被替換為傳送所收取的貨幣數量。
-- `{time}` : 此佔位符將被替換為傳送完成前的倒數秒數。
-- `{cooldown}` : 此佔位符將被替換為傳送完成後的冷卻秒數。
-- `{visibility}` : 此佔位符將被替換為傳送點的可見性設定（公共/私人）
-- `{player}` : 佔位符將被替換為玩家名稱
-- `{inviter}` : 佔位符將被替換為擁有者名稱
-
-你可以使用 Minecraft 顏色代碼來美化文字。這些代碼以 & 字符開頭，後面跟著代表特定顏色的字母或數字。 [更多資訊](https://www.digminecraft.com/lists/color_list_pc.php)
-
-## 音效與特效自訂
-
-你可以在 `config.yml`  配置文件中自訂傳送時播放的音效與特效：
-參考[List Sound](https://www.digminecraft.com/lists/sound_list_pc.php) 和 [List Effect](https://hub.spigotmc.org/javadocs/spigot/org/bukkit/Effect.html)
-
-**注意：音效與特效需使用大寫字母，並且音效中的 "." 必須改為 "_"。**
-
-**預覽：**
-```yaml
-teleport-sound: minecraft:entity.enderman.teleport
-teleport-effect: ENDER_SIGNAL
+  teleport-success: "&a成功傳送到 {warp-name}！"
+  private_warp: "&c這是私人傳送點，需要邀請才能使用。"
+  invite_success: "&a已邀請 {player} 使用傳送點 '{warp-name}'！"
 ```
-## 截圖
 
-![Plugin Screenshot](https://i.imgur.com/vrdM5sD.png)
+### 可用佔位符
 
-## fork from https://github.com/siriusbks/SignWarp
+- `{warp-name}` - 傳送點名稱
+- `{player}` - 玩家名稱
+- `{inviter}` - 邀請者名稱
+- `{use-item}` - 所需物品名稱
+- `{use-cost}` - 物品消耗數量
+- `{time}` - 倒數時間
+- `{cooldown}` - 冷卻時間
+- `{visibility}` - 可見性狀態
+
+## 📸 遊戲截圖
+
+![插件使用示例](https://i.imgur.com/vrdM5sD.png)
+
+## 🤝 支援與回饋
+
+如果您在使用過程中遇到任何問題或有功能建議，歡迎：
+
+- 🐛 [回報問題](https://github.com/verdo568/SignWarp/issues)
+- 💡 [提出功能請求](https://github.com/verdo568/SignWarp/issues)
+- ⭐ 給我們一個星星來支持開發
+
+## 📄 授權條款
+
+本專案使用 [MIT 授權條款](LICENSE)。
+
+## 🙏 致謝
+
+本專案 fork 自 [siriusbks/SignWarp](https://github.com/siriusbks/SignWarp)，感謝原作者的優秀工作。
