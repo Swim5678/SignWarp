@@ -51,7 +51,7 @@ SignWarp 是一款專為 Minecraft Paper 伺服器設計的傳送插件，讓玩
 1. 下載最新版本的 SignWarp.jar 檔案
 2. 將檔案放入伺服器的 `plugins` 資料夾
 3. 重新啟動伺服器
-4. 編輯 `plugins/SignWarp/config.yml` 來自訂設定（可選）
+4. 編輯 `config.yml` 來自訂設定（可選）
 
 ## 🎮 使用方式
 
