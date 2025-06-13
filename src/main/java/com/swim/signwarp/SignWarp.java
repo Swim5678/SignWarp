@@ -8,15 +8,8 @@ import org.bukkit.plugin.java.JavaPlugin;
 public final class SignWarp extends JavaPlugin implements Listener {
 
     public void onEnable() {
-        String bukkitVersion = getServer().getBukkitVersion();
-        if (!bukkitVersion.startsWith("1.21.4")) {
-            getLogger().severe("此插件僅支援 Paper 伺服器版本 1.21.4，當前版本: "
-                    + bukkitVersion + "，即將停用插件");
-            getServer().getPluginManager().disablePlugin(this);
-        } else {
             // Save default config
             saveDefaultConfig();
-
 
             // Initialize database and migrate table if needed
             Warp.createTable();
@@ -36,11 +29,8 @@ public final class SignWarp extends JavaPlugin implements Listener {
             pluginManager.registerEvents(new EventListener(this), this);
             pluginManager.registerEvents(new WarpGuiListener(this), this);
             pluginManager.registerEvents(this, this);
-        }
-
     }
     @Override
     public void onDisable() {
-        // Plugin shutdown logic
     }
 }

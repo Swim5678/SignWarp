@@ -17,12 +17,17 @@ teleport-sound: minecraft:entity.enderman.teleport
 teleport-effect: ENDER_SIGNAL
 
 ###############################################################################
-# 以下設定只影響建立 Warp Target (WPT) 標誌，WP 則免費建立
+# 以下設定只影響建立 Warp Target (WPT) 標誌
 ###############################################################################
 # 建立 Warp Target 標誌所需的物品（設為 none 代表不需要）
-create-wpt-item: "DIAMOND_SWORD"
+create-wpt-item: DIAMOND_SWORD
 # 建立 Warp Target 標誌時消耗的物品數量
 create-wpt-item-cost: 1
+# 每位玩家最多可創建的傳送點數量（-1 表示無限制）
+max-warps-per-player: 10
+
+# OP 是否不受創建數量限制（true 表示 OP 無限制）
+op-unlimited-warps: true
 
 ###############################################################################
 # 傳送點可見性設定
@@ -69,3 +74,6 @@ messages:
   invite_list: "&a傳送點 '{warp-name}' 的邀請列表:"
   no_invites: "&e此傳送點尚未邀請任何玩家。"
   cant_modify_warp: "&c您無法修改此傳送點的邀請名單！"
+  warp_limit_reached: "&c您已達到最大傳送點創建數量限制 ({current}/{max})！"
+  warp_count_info: "&a您目前已創建 {current} 個傳送點，限制為 {max} 個。"
+  unlimited_warps: "&a您擁有無限制的傳送點創建權限。"

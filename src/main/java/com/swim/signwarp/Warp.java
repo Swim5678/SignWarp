@@ -191,14 +191,72 @@ public class Warp {
         }
         return warps;
     }
+
+    /**
+     * 新增方法：取得指定玩家創建的傳送點數量
+     */
+    public static int getPlayerWarpCount(String playerUuid) {
+        try (Connection conn = DriverManager.getConnection(DB_URL)) {
+            String sql = "SELECT COUNT(*) FROM warps WHERE creator_uuid = ?";
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setString(1, playerUuid);
+                ResultSet rs = pstmt.executeQuery();
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            }
+        } catch (SQLException e) {
+            logger.severe("Failed to get player warp count for UUID '" + playerUuid + "': " + e.getMessage());
+        }
+        return 0;
+    }
+
+    /**
+     * 新增方法：取得指定玩家創建的所有傳送點
+     */
+    public static List<Warp> getPlayerWarps(String playerUuid) {
+        List<Warp> warps = new ArrayList<>();
+        try (Connection conn = DriverManager.getConnection(DB_URL)) {
+            String sql = "SELECT * FROM warps WHERE creator_uuid = ?";
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setString(1, playerUuid);
+                ResultSet rs = pstmt.executeQuery();
+                while (rs.next()) {
+                    String name = rs.getString("name");
+                    String worldName = rs.getString("world");
+                    World world = Bukkit.getWorld(worldName);
+                    double x = rs.getDouble("x");
+                    double y = rs.getDouble("y");
+                    double z = rs.getDouble("z");
+                    float yaw = rs.getFloat("yaw");
+                    float pitch = rs.getFloat("pitch");
+                    String createdAt = rs.getString("created_at");
+                    String creator = rs.getString("creator");
+                    String creatorUuid = rs.getString("creator_uuid");
+                    boolean isPrivate = rs.getInt("is_private") == 1;
+                    if (creator == null) creator = "unknown";
+                    if (creatorUuid == null) creatorUuid = "";
+                    if (createdAt == null) createdAt = LocalDateTime.now().toString();
+                    Location location = new Location(world, x, y, z, yaw, pitch);
+                    warps.add(new Warp(name, location, createdAt, creator, creatorUuid, isPrivate));
+                }
+            }
+        } catch (SQLException e) {
+            logger.severe("Failed to get player warps for UUID '" + playerUuid + "': " + e.getMessage());
+        }
+        return warps;
+    }
+
     private static boolean getDefaultVisibility() {
         return JavaPlugin.getPlugin(SignWarp.class).getConfig().getBoolean("default-visibility", false);
     }
+
     public static Warp createNew(String name, Location location, Player creator) {
         boolean isPrivate = getDefaultVisibility();
         return new Warp(name, location, LocalDateTime.now().toString(),
                 creator.getName(), creator.getUniqueId().toString(), isPrivate);
     }
+
     /**
      * 修改 createTable()，除了原有欄位外，增加 creator 欄位與 migration 檢查
      */
@@ -239,6 +297,7 @@ public class Warp {
             }
         }
     }
+
     // 新增創建邀請表的方法
     public static void createInvitesTable() {
         try (Connection conn = DriverManager.getConnection(DB_URL)) {

@@ -101,6 +101,43 @@ public class EventListener implements Listener {
             cooldowns.values().removeIf(cooldownEnd -> cooldownEnd <= now);
         }, 6000L, 6000L);  // 約每5分鐘執行一次 (20 tick * 60 sec * 5 = 6000 ticks)
     }
+    /**
+     * 檢查玩家是否可以創建新的傳送點
+     */
+    private boolean canCreateWarp(Player player) {
+        // 檢查是否啟用創建數量限制
+        int maxWarps = config.getInt("max-warps-per-player", 10);
+        if (maxWarps == -1) {
+            return true; // -1 表示無限制
+        }
+
+        // 檢查 OP 是否不受限制
+        boolean opUnlimited = config.getBoolean("op-unlimited-warps", true);
+        if (opUnlimited && player.isOp()) {
+            return true;
+        }
+
+        // 檢查玩家目前創建的傳送點數量
+        int currentWarps = Warp.getPlayerWarpCount(player.getUniqueId().toString());
+        return currentWarps < maxWarps;
+    }
+
+    /**
+     * 取得玩家的傳送點數量資訊
+     */
+    private String getWarpCountInfo(Player player) {
+        int maxWarps = config.getInt("max-warps-per-player", 10);
+        boolean opUnlimited = config.getBoolean("op-unlimited-warps", true);
+
+        if (maxWarps == -1 || (opUnlimited && player.isOp())) {
+            return config.getString("messages.unlimited_warps", "&a您擁有無限制的傳送點創建權限。");
+        }
+
+        int currentWarps = Warp.getPlayerWarpCount(player.getUniqueId().toString());
+        String message = config.getString("messages.warp_count_info", "&a您目前已創建 {current} 個傳送點，限制為 {max} 個。");
+        return message.replace("{current}", String.valueOf(currentWarps))
+                .replace("{max}", String.valueOf(maxWarps));
+    }
 
     /**
      * 處理標識牌建立事件，包含建立傳送門(WARP)與傳送目標(WPT)的邏輯。
@@ -182,6 +219,17 @@ public class EventListener implements Listener {
                 if (warpNameTakenMessage != null) {
                     player.sendMessage(ChatColor.translateAlternateColorCodes('&', warpNameTakenMessage));
                 }
+                event.setCancelled(true);
+                return;
+            }
+            // 檢查創建數量限制
+            if (!canCreateWarp(player)) {
+                int maxWarps = config.getInt("max-warps-per-player", 10);
+                int currentWarps = Warp.getPlayerWarpCount(player.getUniqueId().toString());
+                String limitMessage = config.getString("messages.warp_limit_reached", "&c您已達到最大傳送點創建數量限制 ({current}/{max})！");
+                limitMessage = limitMessage.replace("{current}", String.valueOf(currentWarps))
+                        .replace("{max}", String.valueOf(maxWarps));
+                player.sendMessage(ChatColor.translateAlternateColorCodes('&', limitMessage));
                 event.setCancelled(true);
                 return;
             }
