@@ -1,4 +1,4 @@
-# SignWarp [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)[![Minecraft Version](https://img.shields.io/badge/Minecraft-1.21.4+-green.svg)](https://www.minecraft.net/)[![Paper](https://img.shields.io/badge/Paper-Required-blue.svg)](https://papermc.io/)
+# SignWarp [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Minecraft Version](https://img.shields.io/badge/Minecraft-1.21.4+-green.svg)](https://www.minecraft.net/) [![Paper](https://img.shields.io/badge/Paper-Required-blue.svg)](https://papermc.io/)
 ## 📖 簡介
 
 SignWarp 是一款專為 Minecraft Paper 伺服器設計的傳送插件，讓玩家能夠透過簡單的告示牌系統建立個人或公共的傳送點。無論是建立城市間的交通網絡，還是設置私人基地的快速通道，SignWarp 都能滿足您的需求。
