@@ -48,7 +48,7 @@ SignWarp 是一款專為 Minecraft Paper 伺服器設計的傳送插件，讓玩
 - **Java 版本**: Java 21 或更高版本
 
 ### 安裝步驟
-1. 下載最新版本的 SignWarp.jar 檔案
+1. 下載最新版本的 [SignWarp.jar](https://github.com/verdo568/SignWarp/actions/runs/15638657989) 檔案
 2. 將檔案放入伺服器的 `plugins` 資料夾
 3. 重新啟動伺服器
 4. 編輯 `config.yml` 來自訂設定（可選）
