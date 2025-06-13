@@ -1,4 +1,4 @@
-# 🚀 SignWarp
+# SignWarp
 
 <div align="center">
 
