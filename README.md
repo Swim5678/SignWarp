@@ -38,6 +38,7 @@ SignWarp 是一款專為 Minecraft Paper 伺服器設計的傳送插件，讓玩
 - **🔊 音效特效** - 可配置傳送音效與視覺效果
 - **⏱️ 冷卻系統** - 可設定傳送延遲與冷卻時間
 - **💎 物品消耗** - 可設定傳送所需物品（預設：終界珍珠）
+- **🏗️ 傳送點數量自訂** - 可設定每人最多建立傳送點(WarpTarget)數量
 
 ## 🛠️ 安裝說明
 
@@ -101,7 +102,7 @@ teleport-use-cooldown: 10
 default-visibility: false
 ```
 
-### 建造成本設定
+### 傳送點(WarpTarget)設定
 
 ```yaml
 # 建立傳送目標所需物品
@@ -109,6 +110,12 @@ create-wpt-item: "DIAMOND_SWORD"
 
 # 建立傳送目標消耗數量
 create-wpt-item-cost: 1
+
+# 每位玩家最多可創建的傳送點數量（-1 表示無限制）
+max-warps-per-player: 10
+
+# OP 是否不受創建數量限制（true 表示 OP 無限制）
+op-unlimited-warps: true
 ```
 
 ### 音效與特效
@@ -190,6 +197,8 @@ messages:
 - `{time}` - 倒數時間
 - `{cooldown}` - 冷卻時間
 - `{visibility}` - 可見性狀態
+- `{current}` - 玩家目前傳送點(WarpTarget)數量
+- `{max}` - 玩家最大可建立傳送點(WarpTarget)數量
 
 ## 📸 遊戲截圖
 
