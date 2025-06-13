@@ -1,18 +1,9 @@
-# SignWarp
-
-<div align="center">
-
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Minecraft Version](https://img.shields.io/badge/Minecraft-1.21.4+-green.svg)](https://www.minecraft.net/)
-[![Paper](https://img.shields.io/badge/Paper-Required-blue.svg)](https://papermc.io/)
+# SignWarp [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)[![Minecraft Version](https://img.shields.io/badge/Minecraft-1.21.4+-green.svg)](https://www.minecraft.net/)[![Paper](https://img.shields.io/badge/Paper-Required-blue.svg)](https://papermc.io/)
 
 **一個功能豐富且易於使用的 Minecraft Paper 插件，讓玩家透過告示牌輕鬆建立傳送系統**
 
 [功能特色](#-功能特色) • [安裝說明](#-安裝說明) • [使用方式](#-使用方式) • [配置設定](#-配置設定) • [權限系統](#-權限系統)
 
-</div>
-
----
 
 ## 📖 簡介
 
@@ -40,7 +31,7 @@ SignWarp 是一款專為 Minecraft Paper 伺服器設計的傳送插件，讓玩
 - **💎 物品消耗** - 可設定傳送所需物品（預設：終界珍珠）
 - **🏗️ 傳送點數量自訂** - 可設定每人最多建立傳送點(WarpTarget)數量
 
-## 🛠️ 安裝說明
+## 🛠 安裝說明
 
 ### 系統需求
 - **Minecraft 版本**: 1.21.4 或更高版本
