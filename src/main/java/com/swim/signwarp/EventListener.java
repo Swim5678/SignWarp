@@ -277,7 +277,14 @@ public class EventListener implements Listener {
                     player.getName(), player.getUniqueId().toString(), defaultVisibility);
             warp.save();
             event.setLine(0, ChatColor.BLUE + SignData.HEADER_TARGET);
-            event.setLine(2, ChatColor.GRAY + "建立者: " + ChatColor.WHITE + player.getName());
+            boolean showCreatorOnSign = config.getBoolean("show-creator-on-sign", true);
+            if (showCreatorOnSign) {
+                // 從配置中獲取建立者顯示格式，如果沒有則使用預設格式
+                String creatorDisplayFormat = config.getString("messages.creator-display-format", "&7建立者: &f{creator}");
+                String formattedCreatorInfo = ChatColor.translateAlternateColorCodes('&',
+                        creatorDisplayFormat.replace("{creator}", player.getName()));
+                event.setLine(2, formattedCreatorInfo);
+            }
             String targetSignCreatedMessage = config.getString("messages.target_sign_created");
             if (targetSignCreatedMessage != null) {
                 player.sendMessage(ChatColor.translateAlternateColorCodes('&', targetSignCreatedMessage));

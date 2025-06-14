@@ -23,7 +23,7 @@ max-warps-per-player: 10
 op-unlimited-warps: true
 # 預設的傳送點可見性（true 為私人，false 為公共）
 default-visibility: false
-# 是否在 WPT 告示牌上顯示建立者資訊（true 表示不顯示）
+# 是否在 WPT 告示牌上顯示建立者資訊（true 表示顯示，false 表示不顯示）
 show-creator-on-sign: true
 ###############################################################################
 # 自訂訊息
