@@ -29,7 +29,7 @@ public class SWCommand implements CommandExecutor, TabCompleter {
                              @NotNull String label,
                              String[] args) {
         if (args.length == 0) {
-            sender.sendMessage("Usage: /signwarp <gui/reload/set/invite/uninvite/list-invites/tp>");
+            sender.sendMessage("Usage: /signwarp <gui/reload/set/invite/uninvite/list-invites/list/tp>");
             return true;
         }
 
@@ -65,12 +65,17 @@ public class SWCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        if (args[0].equalsIgnoreCase("list")) {
+            handleMyWarpsCommand(sender, args);
+            return true;
+        }
+
         // 僅限 OP 傳送指定 Warp
         if (args[0].equalsIgnoreCase("tp")) {
             return handleWptCommand(sender, args);
         }
 
-        sender.sendMessage("Unknown subcommand. Usage: /signwarp <gui/reload/set/invite/uninvite/list-invites/tp>");
+        sender.sendMessage("Unknown subcommand. Usage: /signwarp <gui/reload/set/invite/uninvite/list-invites/list/tp>");
         return true;
     }
 
@@ -301,6 +306,114 @@ public class SWCommand implements CommandExecutor, TabCompleter {
         }
     }
 
+    /**
+     * 新增方法：處理查看玩家自己擁有的傳送點指令
+     * OP 可以使用 /signwarp list <玩家名稱> 來查看指定玩家的傳送點
+     */
+    private void handleMyWarpsCommand(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage("This command can only be executed by a player.");
+            return;
+        }
+
+        String targetPlayerName;
+        String targetPlayerUuid;
+        boolean isViewingOthers = false;
+
+        // 檢查是否有指定玩家參數
+        if (args.length > 1) {
+            // 檢查是否為 OP 或有管理員權限
+            if (!player.isOp() && !player.hasPermission("signwarp.admin")) {
+                String msg = plugin.getConfig().getString("messages.not_permission_view_others",
+                        "&c您沒有權限查看其他玩家的傳送點！");
+                player.sendMessage(ChatColor.translateAlternateColorCodes('&', msg));
+                return;
+            }
+
+            targetPlayerName = args[1];
+            isViewingOthers = true;
+
+            // 嘗試從線上玩家獲取 UUID
+            Player targetPlayer = Bukkit.getPlayer(targetPlayerName);
+            if (targetPlayer != null) {
+                targetPlayerUuid = targetPlayer.getUniqueId().toString();
+            } else {
+                // 如果玩家不在線，嘗試從已有的傳送點資料中找到該玩家
+                targetPlayerUuid = getPlayerUuidByName(targetPlayerName);
+                if (targetPlayerUuid == null) {
+                    String msg = plugin.getConfig().getString("messages.player_not_found_or_no_warps",
+                                    "&c找不到玩家 '{player}' 或該玩家沒有任何傳送點。")
+                            .replace("{player}", targetPlayerName);
+                    player.sendMessage(ChatColor.translateAlternateColorCodes('&', msg));
+                    return;
+                }
+            }
+        } else {
+            // 沒有指定玩家，查看自己的傳送點
+            targetPlayerName = player.getName();
+            targetPlayerUuid = player.getUniqueId().toString();
+        }
+
+        List<Warp> playerWarps = Warp.getPlayerWarps(targetPlayerUuid);
+
+        // 取得配置中的訊息，如果沒有設定則使用預設值
+        String headerMsg = plugin.getConfig().getString("messages.my_warps_header",
+                        "&a=== {player} 擁有的傳送點 ===")
+                .replace("{player}", isViewingOthers ? targetPlayerName : "您");
+        String noWarpsMsg = plugin.getConfig().getString("messages.no_warps_owned",
+                        "&7{player}目前沒有擁有任何傳送點。")
+                .replace("{player}", isViewingOthers ? targetPlayerName : "您");
+        String warpListFormat = plugin.getConfig().getString("messages.warp_list_format",
+                "&f{index}. &b{warp-name} &7({visibility}) - &e{world} &7({x}, {y}, {z})");
+        String totalWarpsMsg = plugin.getConfig().getString("messages.total_warps",
+                        "&a{player}總共擁有 {count} 個傳送點")
+                .replace("{player}", isViewingOthers ? targetPlayerName : "您");
+
+        // 顯示標題
+        player.sendMessage(ChatColor.translateAlternateColorCodes('&', headerMsg));
+
+        if (playerWarps.isEmpty()) {
+            // 沒有傳送點
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&', noWarpsMsg));
+        } else {
+            // 列出所有傳送點
+            for (int i = 0; i < playerWarps.size(); i++) {
+                Warp warp = playerWarps.get(i);
+                String visibility = warp.isPrivate() ? "私人" : "公共";
+                String formattedMsg = warpListFormat
+                        .replace("{index}", String.valueOf(i + 1))
+                        .replace("{warp-name}", warp.getName())
+                        .replace("{visibility}", visibility)
+                        .replace("{world}", Objects.requireNonNull(warp.getLocation().getWorld()).getName())
+                        .replace("{x}", String.valueOf((int) warp.getLocation().getX()))
+                        .replace("{y}", String.valueOf((int) warp.getLocation().getY()))
+                        .replace("{z}", String.valueOf((int) warp.getLocation().getZ()))
+                        .replace("{creator}", warp.getCreator())
+                        .replace("{created-at}", warp.getFormattedCreatedAt());
+
+                player.sendMessage(ChatColor.translateAlternateColorCodes('&', formattedMsg));
+            }
+
+            // 顯示總數
+            String totalMsg = totalWarpsMsg.replace("{count}", String.valueOf(playerWarps.size()));
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&', totalMsg));
+        }
+    }
+
+    /**
+     * 輔助方法：根據玩家名稱查找 UUID
+     * 從現有的傳送點資料中查找該玩家的 UUID
+     */
+    private String getPlayerUuidByName(String playerName) {
+        List<Warp> allWarps = Warp.getAll();
+        for (Warp warp : allWarps) {
+            if (warp.getCreator().equalsIgnoreCase(playerName)) {
+                return warp.getCreatorUuid();
+            }
+        }
+        return null;
+    }
+
     private boolean canModifyWarp(Player player, Warp warp) {
         return warp.getCreatorUuid().equals(player.getUniqueId().toString())
                 || player.hasPermission("signwarp.admin");
@@ -346,6 +459,7 @@ public class SWCommand implements CommandExecutor, TabCompleter {
             if (sender.hasPermission("signwarp.admin")) cmds.add("gui");
             if (sender.hasPermission("signwarp.reload")) cmds.add("reload");
             cmds.add("set");
+            cmds.add("list");
             if (sender.hasPermission("signwarp.invite")) {
                 cmds.add("invite");
                 cmds.add("uninvite");
@@ -388,6 +502,24 @@ public class SWCommand implements CommandExecutor, TabCompleter {
                             .map(Warp::getName)
                             .filter(n -> n.toLowerCase().startsWith(args[1].toLowerCase()))
                             .forEach(completions::add);
+                    break;
+                case "list":
+                    // 只有 OP 或管理員可以查看其他玩家的傳送點
+                    if (sender instanceof Player p && (p.isOp() || p.hasPermission("signwarp.admin"))) {
+                        // 補全線上玩家名稱
+                        Bukkit.getOnlinePlayers().forEach(pl -> {
+                            if (pl.getName().toLowerCase().startsWith(args[1].toLowerCase())) {
+                                completions.add(pl.getName());
+                            }
+                        });
+
+                        // 補全曾經創建過傳送點的玩家名稱
+                        Warp.getAll().stream()
+                                .map(Warp::getCreator)
+                                .distinct()
+                                .filter(name -> name.toLowerCase().startsWith(args[1].toLowerCase()))
+                                .forEach(completions::add);
+                    }
                     break;
             }
         }
