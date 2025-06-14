@@ -10,12 +10,6 @@ teleport-delay: 5
 # 設置傳送完成後的冷卻（單位：秒）
 teleport-use-cooldown: 10
 
-# 傳送時播放的音效
-teleport-sound: minecraft:entity.enderman.teleport
-
-# 傳送時顯示的效果
-teleport-effect: ENDER_SIGNAL
-
 ###############################################################################
 # 以下設定只影響建立 Warp Target (WPT) 標誌
 ###############################################################################
