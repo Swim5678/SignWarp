@@ -29,7 +29,7 @@ public class SWCommand implements CommandExecutor, TabCompleter {
                              @NotNull String label,
                              String[] args) {
         if (args.length == 0) {
-            sender.sendMessage("Usage: /signwarp <gui/reload/set/invite/uninvite/list-invites/list/tp>");
+            sender.sendMessage("Usage: /signwarp <gui/reload/set/invite/uninvite/list-invites/list-own/tp>");
             return true;
         }
 
@@ -65,7 +65,7 @@ public class SWCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        if (args[0].equalsIgnoreCase("list")) {
+        if (args[0].equalsIgnoreCase("list-own")) {
             handleMyWarpsCommand(sender, args);
             return true;
         }
@@ -279,7 +279,7 @@ public class SWCommand implements CommandExecutor, TabCompleter {
         }
         boolean isOwner = warp.getCreatorUuid().equals(player.getUniqueId().toString());
         boolean isAdmin = player.hasPermission("signwarp.admin");
-        if (!isOwner && !player.hasPermission("signwarp.invite.list")) {
+        if (!isOwner && !player.hasPermission("signwarp.invite.list-own")) {
             String msg = plugin.getConfig().getString("messages.not_permission",
                     "&c您沒有權限！");
             player.sendMessage(ChatColor.translateAlternateColorCodes('&', msg));
@@ -308,7 +308,7 @@ public class SWCommand implements CommandExecutor, TabCompleter {
 
     /**
      * 新增方法：處理查看玩家自己擁有的傳送點指令
-     * OP 可以使用 /signwarp list <玩家名稱> 來查看指定玩家的傳送點
+     * OP 可以使用 /signwarp list-own <玩家名稱> 來查看指定玩家的傳送點
      */
     private void handleMyWarpsCommand(CommandSender sender, String[] args) {
         if (!(sender instanceof Player player)) {
@@ -459,7 +459,7 @@ public class SWCommand implements CommandExecutor, TabCompleter {
             if (sender.hasPermission("signwarp.admin")) cmds.add("gui");
             if (sender.hasPermission("signwarp.reload")) cmds.add("reload");
             cmds.add("set");
-            cmds.add("list");
+            cmds.add("list-own");
             if (sender.hasPermission("signwarp.invite")) {
                 cmds.add("invite");
                 cmds.add("uninvite");
@@ -503,7 +503,7 @@ public class SWCommand implements CommandExecutor, TabCompleter {
                             .filter(n -> n.toLowerCase().startsWith(args[1].toLowerCase()))
                             .forEach(completions::add);
                     break;
-                case "list":
+                case "list-own":
                     // 只有 OP 或管理員可以查看其他玩家的傳送點
                     if (sender instanceof Player p && (p.isOp() || p.hasPermission("signwarp.admin"))) {
                         // 補全線上玩家名稱
