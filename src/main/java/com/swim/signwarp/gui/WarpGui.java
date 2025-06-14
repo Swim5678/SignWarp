@@ -75,9 +75,11 @@ public class WarpGui {
     private static @NotNull List<String> getStrings(Warp warp) {
         List<String> lore = new ArrayList<>();
         lore.add(ChatColor.GOLD + "世界: " + Objects.requireNonNull(warp.getLocation().getWorld()).getName());
-        lore.add(ChatColor.YELLOW + "X: " + warp.getLocation().getX());
-        lore.add(ChatColor.YELLOW + "Y: " + warp.getLocation().getY());
-        lore.add(ChatColor.YELLOW + "Z: " + warp.getLocation().getZ());
+        // 將 XYZ 座標顯示在同一行，並四捨五入到整數位
+        lore.add(ChatColor.YELLOW + "座標: " +
+                Math.round(warp.getLocation().getX()) + ", " +
+                Math.round(warp.getLocation().getY()) + ", " +
+                Math.round(warp.getLocation().getZ()));
         lore.add(ChatColor.DARK_GREEN + "建立時間: " + warp.getFormattedCreatedAt());
         lore.add(ChatColor.GRAY + "建立者: " + warp.getCreator());
         lore.add(ChatColor.AQUA + "狀態: " + (warp.isPrivate() ? "私人" : "公共"));
