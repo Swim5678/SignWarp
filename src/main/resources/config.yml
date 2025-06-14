@@ -19,16 +19,12 @@ create-wpt-item: DIAMOND_SWORD
 create-wpt-item-cost: 1
 # 每位玩家最多可創建的傳送點數量（-1 表示無限制）
 max-warps-per-player: 10
-
 # OP 是否不受創建數量限制（true 表示 OP 無限制）
 op-unlimited-warps: true
-
-###############################################################################
-# 傳送點可見性設定
-###############################################################################
 # 預設的傳送點可見性（true 為私人，false 為公共）
 default-visibility: false
-
+# 是否在 WPT 告示牌上顯示建立者資訊（true 表示不顯示）
+show-creator-on-sign: true
 ###############################################################################
 # 自訂訊息
 ###############################################################################
@@ -77,3 +73,4 @@ messages:
   total_warps: "&a{player}總共擁有 {count} 個傳送點"
   not_permission_view_others: "&c您沒有權限查看其他玩家的傳送點！"
   player_not_found_or_no_warps: "&c找不到玩家 '{player}' 或該玩家沒有任何傳送點。"
+  creator-display-format: "&7建立者: &f{creator}"

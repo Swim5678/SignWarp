@@ -272,12 +272,12 @@ public class EventListener implements Listener {
             }
             // 建立傳送目標
             String currentDateTime = LocalDateTime.now().toString();
-            // 修改建構子：將 player.getName() 當作 creator 參數傳入
             boolean defaultVisibility = JavaPlugin.getPlugin(SignWarp.class).getConfig().getBoolean("default-visibility", false);
             Warp warp = new Warp(signData.warpName, player.getLocation(), currentDateTime,
                     player.getName(), player.getUniqueId().toString(), defaultVisibility);
             warp.save();
             event.setLine(0, ChatColor.BLUE + SignData.HEADER_TARGET);
+            event.setLine(2, ChatColor.GRAY + "建立者: " + ChatColor.WHITE + player.getName());
             String targetSignCreatedMessage = config.getString("messages.target_sign_created");
             if (targetSignCreatedMessage != null) {
                 player.sendMessage(ChatColor.translateAlternateColorCodes('&', targetSignCreatedMessage));
