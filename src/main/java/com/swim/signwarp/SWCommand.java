@@ -442,7 +442,7 @@ public class SWCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         player.teleport(warp.getLocation());
-        player.sendMessage(ChatColor.GREEN + "已傳送到 Warp: " + warp.getName() +
+        player.sendMessage(ChatColor.GREEN + "已傳送到: " + warp.getName() +
                 " (建立者: " + warp.getCreator() + ")");
         return true;
     }
