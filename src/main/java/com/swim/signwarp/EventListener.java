@@ -752,6 +752,13 @@ public class EventListener implements Listener {
         }
     }
 
+    @EventHandler
+    public void onBlockExplode(BlockExplodeEvent event) {
+        if (hasBlockWarpSign(event.blockList())) {
+            event.setCancelled(true);
+        }
+    }
+
     /**
      * 防止傳送告示牌依附的方塊受重力影響
      */
