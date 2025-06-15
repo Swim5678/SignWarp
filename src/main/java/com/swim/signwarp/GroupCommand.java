@@ -43,6 +43,49 @@ public class GroupCommand {
         };
     }
 
+    /**
+     * 檢查玩家是否有群組管理權限
+     * OP 擁有所有群組的完整管理權限，不受任何限制
+     */
+    private boolean hasGroupAdminPermission(Player player, WarpGroup group) {
+        // OP 擁有完整權限
+        if (player.isOp()) {
+            return true;
+        }
+
+        // 檢查群組管理權限
+        if (player.hasPermission("signwarp.group.admin")) {
+            return true;
+        }
+
+        // 檢查是否為群組擁有者
+        return group.getOwnerUuid().equals(player.getUniqueId().toString());
+    }
+
+    /**
+     * 檢查玩家是否有群組檢視權限
+     * OP 可以查看所有群組資訊
+     */
+    private boolean hasGroupViewPermission(Player player, WarpGroup group, String groupName) {
+        // OP 擁有完整權限
+        if (player.isOp()) {
+            return true;
+        }
+
+        // 檢查群組管理權限
+        if (player.hasPermission("signwarp.group.admin")) {
+            return true;
+        }
+
+        // 檢查是否為群組擁有者
+        if (group.getOwnerUuid().equals(player.getUniqueId().toString())) {
+            return true;
+        }
+
+        // 檢查是否為群組成員
+        return WarpGroup.isPlayerInGroup(groupName, player.getUniqueId().toString());
+    }
+
     private boolean handleCreateGroup(Player player, String[] args) {
         if (args.length < 3) {
             player.sendMessage(ChatColor.RED + "用法: /signwarp group create <群組名稱>");
@@ -62,10 +105,10 @@ public class GroupCommand {
             return true;
         }
 
-        // 檢查玩家群組數量限制
+        // 檢查玩家群組數量限制 - OP 不受限制
         int maxGroups = plugin.getConfig().getInt("warp-groups.max-groups-per-player", 5);
         List<WarpGroup> playerGroups = WarpGroup.getPlayerGroups(player.getUniqueId().toString());
-        if (playerGroups.size() >= maxGroups && !player.hasPermission("signwarp.group.admin")) {
+        if (playerGroups.size() >= maxGroups && !player.isOp() && !player.hasPermission("signwarp.group.admin")) {
             player.sendMessage(plugin.getConfig().getString("messages.max_groups_reached", "&c您已達到群組建立上限！"));
             return true;
         }
@@ -95,22 +138,21 @@ public class GroupCommand {
             return true;
         }
 
-        if (!group.getOwnerUuid().equals(player.getUniqueId().toString()) &&
-                !player.hasPermission("signwarp.group.admin") &&
-                !player.isOp()) {
+        // 使用統一的權限檢查方法
+        if (!hasGroupAdminPermission(player, group)) {
             player.sendMessage(ChatColor.translateAlternateColorCodes('&',
-                    plugin.getConfig().getString("messages.not_group_owner", "&c您不是此群組的擁有者！")));
+                    plugin.getConfig().getString("messages.not_group_owner", "&c您沒有權限管理此群組！")));
             return true;
         }
 
-        // 檢查群組中傳送點數量限制
+        // 檢查群組中傳送點數量限制 - OP 不受限制
         int maxWarpsPerGroup = plugin.getConfig().getInt("warp-groups.max-warps-per-group", 10);
         List<String> currentWarps = group.getGroupWarps();
 
         for (int i = 3; i < args.length; i++) {
             String warpName = args[i];
 
-            if (currentWarps.size() >= maxWarpsPerGroup) {
+            if (currentWarps.size() >= maxWarpsPerGroup && !player.isOp() && !player.hasPermission("signwarp.group.admin")) {
                 player.sendMessage(ChatColor.RED + "群組傳送點數量已達上限！");
                 break;
             }
@@ -127,7 +169,8 @@ public class GroupCommand {
                 continue;
             }
 
-            if (!warp.getCreatorUuid().equals(player.getUniqueId().toString())) {
+            // OP 可以管理任何人的傳送點
+            if (!warp.getCreatorUuid().equals(player.getUniqueId().toString()) && !player.isOp() && !player.hasPermission("signwarp.group.admin")) {
                 player.sendMessage(ChatColor.RED + "您只能將自己的傳送點加入群組！");
                 continue;
             }
@@ -161,11 +204,10 @@ public class GroupCommand {
             return true;
         }
 
-        if (!group.getOwnerUuid().equals(player.getUniqueId().toString()) &&
-                !player.hasPermission("signwarp.group.admin") &&
-                !player.isOp()) {
+        // 使用統一的權限檢查方法
+        if (!hasGroupAdminPermission(player, group)) {
             player.sendMessage(ChatColor.translateAlternateColorCodes('&',
-                    plugin.getConfig().getString("messages.not_group_owner", "&c您不是此群組的擁有者！")));
+                    plugin.getConfig().getString("messages.not_group_owner", "&c您沒有權限管理此群組！")));
             return true;
         }
 
@@ -196,11 +238,10 @@ public class GroupCommand {
             return true;
         }
 
-        if (!group.getOwnerUuid().equals(player.getUniqueId().toString()) &&
-                !player.hasPermission("signwarp.group.admin") &&
-                !player.isOp()) {
+        // 使用統一的權限檢查方法
+        if (!hasGroupAdminPermission(player, group)) {
             player.sendMessage(ChatColor.translateAlternateColorCodes('&',
-                    plugin.getConfig().getString("messages.not_group_owner", "&c您不是此群組的擁有者！")));
+                    plugin.getConfig().getString("messages.not_group_owner", "&c您沒有權限管理此群組！")));
             return true;
         }
 
@@ -213,10 +254,10 @@ public class GroupCommand {
             return true;
         }
 
-        // 檢查群組成員數量限制
+        // 檢查群組成員數量限制 - OP 不受限制
         int maxMembersPerGroup = plugin.getConfig().getInt("warp-groups.max-members-per-group", 20);
         List<WarpGroup.GroupMember> currentMembers = group.getGroupMembers();
-        if (currentMembers.size() >= maxMembersPerGroup) {
+        if (currentMembers.size() >= maxMembersPerGroup && !player.isOp() && !player.hasPermission("signwarp.group.admin")) {
             player.sendMessage(ChatColor.RED + "群組成員數量已達上限！");
             return true;
         }
@@ -240,7 +281,6 @@ public class GroupCommand {
             return true;
         }
 
-
         String groupName = args[2];
         String targetPlayerName = args[3];
 
@@ -251,11 +291,10 @@ public class GroupCommand {
             return true;
         }
 
-        if (!group.getOwnerUuid().equals(player.getUniqueId().toString()) &&
-                !player.hasPermission("signwarp.group.admin") &&
-                !player.isOp()) {
+        // 使用統一的權限檢查方法
+        if (!hasGroupAdminPermission(player, group)) {
             player.sendMessage(ChatColor.translateAlternateColorCodes('&',
-                    plugin.getConfig().getString("messages.not_group_owner", "&c您不是此群組的擁有者！")));
+                    plugin.getConfig().getString("messages.not_group_owner", "&c您沒有權限管理此群組！")));
             return true;
         }
 
@@ -315,10 +354,8 @@ public class GroupCommand {
             return true;
         }
 
-        // 只有群組擁有者、成員或管理員可以查看詳細資訊
-        if (!group.getOwnerUuid().equals(player.getUniqueId().toString()) &&
-                !WarpGroup.isPlayerInGroup(groupName, player.getUniqueId().toString()) &&
-                !player.hasPermission("signwarp.group.admin")) {
+        // 使用統一的權限檢查方法
+        if (!hasGroupViewPermission(player, group, groupName)) {
             player.sendMessage(ChatColor.RED + "您沒有權限查看此群組資訊！");
             return true;
         }
@@ -346,7 +383,6 @@ public class GroupCommand {
             return true;
         }
 
-
         String groupName = args[2];
         WarpGroup group = WarpGroup.getByName(groupName);
 
@@ -356,11 +392,10 @@ public class GroupCommand {
             return true;
         }
 
-        if (!group.getOwnerUuid().equals(player.getUniqueId().toString()) &&
-                !player.hasPermission("signwarp.group.admin") &&
-                !player.isOp()) {
+        // 使用統一的權限檢查方法
+        if (!hasGroupAdminPermission(player, group)) {
             player.sendMessage(ChatColor.translateAlternateColorCodes('&',
-                    plugin.getConfig().getString("messages.not_group_owner", "&c您不是此群組的擁有者！")));
+                    plugin.getConfig().getString("messages.not_group_owner", "&c您沒有權限管理此群組！")));
             return true;
         }
 
