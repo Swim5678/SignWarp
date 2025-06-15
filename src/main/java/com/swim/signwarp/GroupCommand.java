@@ -95,8 +95,11 @@ public class GroupCommand {
             return true;
         }
 
-        if (!group.getOwnerUuid().equals(player.getUniqueId().toString()) && !player.hasPermission("signwarp.group.admin")) {
-            player.sendMessage(plugin.getConfig().getString("messages.not_group_owner", "&c您不是此群組的擁有者！"));
+        if (!group.getOwnerUuid().equals(player.getUniqueId().toString()) &&
+                !player.hasPermission("signwarp.group.admin") &&
+                !player.isOp()) {
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&',
+                    plugin.getConfig().getString("messages.not_group_owner", "&c您不是此群組的擁有者！")));
             return true;
         }
 
@@ -158,8 +161,11 @@ public class GroupCommand {
             return true;
         }
 
-        if (!group.getOwnerUuid().equals(player.getUniqueId().toString()) && !player.hasPermission("signwarp.group.admin")) {
-            player.sendMessage(plugin.getConfig().getString("messages.not_group_owner", "&c您不是此群組的擁有者！"));
+        if (!group.getOwnerUuid().equals(player.getUniqueId().toString()) &&
+                !player.hasPermission("signwarp.group.admin") &&
+                !player.isOp()) {
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&',
+                    plugin.getConfig().getString("messages.not_group_owner", "&c您不是此群組的擁有者！")));
             return true;
         }
 
@@ -190,8 +196,11 @@ public class GroupCommand {
             return true;
         }
 
-        if (!group.getOwnerUuid().equals(player.getUniqueId().toString()) && !player.hasPermission("signwarp.group.admin")) {
-            player.sendMessage(plugin.getConfig().getString("messages.not_group_owner", "&c您不是此群組的擁有者！"));
+        if (!group.getOwnerUuid().equals(player.getUniqueId().toString()) &&
+                !player.hasPermission("signwarp.group.admin") &&
+                !player.isOp()) {
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&',
+                    plugin.getConfig().getString("messages.not_group_owner", "&c您不是此群組的擁有者！")));
             return true;
         }
 
@@ -242,8 +251,11 @@ public class GroupCommand {
             return true;
         }
 
-        if (!group.getOwnerUuid().equals(player.getUniqueId().toString()) && !player.hasPermission("signwarp.group.admin")) {
-            player.sendMessage(plugin.getConfig().getString("messages.not_group_owner", "&c您不是此群組的擁有者！"));
+        if (!group.getOwnerUuid().equals(player.getUniqueId().toString()) &&
+                !player.hasPermission("signwarp.group.admin") &&
+                !player.isOp()) {
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&',
+                    plugin.getConfig().getString("messages.not_group_owner", "&c您不是此群組的擁有者！")));
             return true;
         }
 
@@ -334,10 +346,6 @@ public class GroupCommand {
             return true;
         }
 
-        if (!player.hasPermission("signwarp.group.manage")) {
-            player.sendMessage(ChatColor.RED + "您沒有權限刪除群組！");
-            return true;
-        }
 
         String groupName = args[2];
         WarpGroup group = WarpGroup.getByName(groupName);
@@ -348,8 +356,11 @@ public class GroupCommand {
             return true;
         }
 
-        if (!group.getOwnerUuid().equals(player.getUniqueId().toString()) && !player.hasPermission("signwarp.group.admin")) {
-            player.sendMessage(plugin.getConfig().getString("messages.not_group_owner", "&c您不是此群組的擁有者！"));
+        if (!group.getOwnerUuid().equals(player.getUniqueId().toString()) &&
+                !player.hasPermission("signwarp.group.admin") &&
+                !player.isOp()) {
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&',
+                    plugin.getConfig().getString("messages.not_group_owner", "&c您不是此群組的擁有者！")));
             return true;
         }
 
