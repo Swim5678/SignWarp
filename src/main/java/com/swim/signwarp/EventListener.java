@@ -459,6 +459,7 @@ public class EventListener implements Listener {
     /**
      * 處理傳送邏輯：
      * - 檢查傳送目標是否存在，若不存在則記錄日誌並通知玩家。
+     * - 檢查跨次元傳送限制
      * - 設定傳送延遲、無敵狀態、牽引生物傳送及附帶特效（音效、粒子）。
      * - 若附近有符合條件的船隻，則採用改良邏輯：
      *   先傳送點擊告示牌的玩家，再傳送該船，並將該船中所有非玩家乘客
@@ -481,6 +482,12 @@ public class EventListener implements Listener {
             }
             return;
         }
+
+        // 檢查跨次元傳送限制
+        if (!canCrossDimensionTeleport(player, warp)) {
+            return; // 如果不允許跨次元傳送，直接返回
+        }
+
         if (warp.isPrivate()) {
             boolean canUse = warp.getCreatorUuid().equals(player.getUniqueId().toString()) || // 是創建者
                     player.hasPermission("signwarp.admin") || // 是管理員
@@ -507,6 +514,7 @@ public class EventListener implements Listener {
                 return;
             }
         }
+
         // 讀取傳送延遲（單位：秒）
         int teleportDelay = config.getInt("teleport-delay", 5);
         String teleportMessage = config.getString("messages.teleport");
@@ -514,6 +522,8 @@ public class EventListener implements Listener {
             player.sendMessage(ChatColor.translateAlternateColorCodes('&',
                     teleportMessage.replace("{warp-name}", warp.getName()).replace("{time}", String.valueOf(teleportDelay))));
         }
+
+        // 其餘的傳送邏輯保持不變...
         UUID playerUUID = player.getUniqueId();
         // 取消玩家之前的傳送任務（若有）
         BukkitTask previousTask = teleportTasks.get(playerUUID);
@@ -609,7 +619,7 @@ public class EventListener implements Listener {
                 sound = Registry.SOUNDS.get(soundKey);
             }
             if (sound == null) {
-                    plugin.getLogger().warning("未找到声音: " + rawSoundName);
+                plugin.getLogger().warning("未找到声音: " + rawSoundName);
             }
 
             Effect effect = Effect.valueOf(config.getString("teleport-effect", "ENDER_SIGNAL"));
@@ -636,6 +646,71 @@ public class EventListener implements Listener {
             invinciblePlayers.remove(playerUUID);
         }, teleportDelay * 20L); // 延遲時間轉為 tick
         teleportTasks.put(playerUUID, teleportTask);
+    }
+    /**
+     * 檢查是否允許跨次元傳送
+     * @param player 玩家
+     * @param warp 傳送點
+     * @return 是否允許傳送
+     */
+    private boolean canCrossDimensionTeleport(Player player, Warp warp) {
+        World playerWorld = player.getWorld();
+        World warpWorld = warp.getLocation().getWorld();
+
+        // 如果傳送點的世界不存在，顯示錯誤訊息
+        if (warpWorld == null) {
+            String message = config.getString("messages.warp_world_not_found",
+                    "&c傳送點所在的世界不存在或未載入！");
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
+
+            // 返還已扣除的物品
+            returnPendingItems(player);
+            return false;
+        }
+
+        // 如果是同一個世界，直接允許
+        if (!isDifferentWorld(playerWorld, warpWorld)) {
+            return true;
+        }
+
+        // 檢查配置是否允許跨次元傳送
+        boolean crossDimensionEnabled = config.getBoolean("cross-dimension-teleport.enabled", true);
+        if (!crossDimensionEnabled) {
+            // 檢查是否為 OP 且可以繞過限制
+            boolean opBypass = config.getBoolean("cross-dimension-teleport.op-bypass", true);
+            if (opBypass && player.isOp()) {
+                return true; // OP 可以繞過限制
+            }
+
+            // 不允許跨次元傳送，顯示錯誤訊息
+            String message = config.getString("messages.cross_dimension_disabled");
+            if (message != null) {
+                // 直接使用 warpWorld.getName() 因為我們已經確認它不是 null
+                String targetWorldName = warpWorld.getName();
+                player.sendMessage(ChatColor.translateAlternateColorCodes('&',
+                        message.replace("{target-world}", targetWorldName)));
+            }
+
+            // 返還已扣除的物品
+            returnPendingItems(player);
+
+            return false;
+        }
+
+        return true; // 允許跨次元傳送
+    }
+
+    /**
+     * 檢查兩個世界是否不同
+     * @param world1 第一個世界
+     * @param world2 第二個世界
+     * @return 是否為不同世界
+     */
+    private boolean isDifferentWorld(World world1, World world2) {
+        if (world1 == null || world2 == null) {
+            return true; // 如果任一世界為 null，視為不同世界
+        }
+        return !world1.equals(world2);
     }
     private boolean canUseWarp(Player player, Warp warp) {
         // 管理員可以使用所有傳送點

@@ -10,6 +10,13 @@ teleport-delay: 5
 # 設置傳送完成後的冷卻（單位：秒）
 teleport-use-cooldown: 10
 
+# 跨次元傳送設定
+cross-dimension-teleport:
+  # 是否允許跨次元傳送 (true 允許, false 禁止)
+  enabled: true
+  # OP 是否可以無視跨次元限制 (true 允許, false 禁止)
+  op-bypass: true
+
 ###############################################################################
 # 以下設定只影響建立 Warp Target (WPT) 標誌
 ###############################################################################
@@ -74,3 +81,5 @@ messages:
   not_permission_view_others: "&c您沒有權限查看其他玩家的傳送點！"
   player_not_found_or_no_warps: "&c找不到玩家 '{player}' 或該玩家沒有任何傳送點。"
   creator-display-format: "&7建立者: &f{creator}"
+  cross_dimension_disabled: "&c跨次元傳送已被禁用！您無法傳送到位於 &e{target-world} &c世界的傳送點。"
+  warp_world_not_found: "&c傳送點所在的世界不存在或未載入！請聯絡管理員。"
