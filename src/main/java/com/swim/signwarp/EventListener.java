@@ -375,15 +375,14 @@ public class EventListener implements Listener {
         Player player = event.getPlayer();
         UUID playerId = player.getUniqueId();
         Warp warp = Warp.getByName(signData.warpName);
-        if (warp != null && warp.isPrivate()) {
-            boolean canUse = warp.getCreatorUuid().equals(player.getUniqueId().toString()) || // 是創建者
-                    player.hasPermission("signwarp.admin") || // 是管理員
-                    warp.isPlayerInvited(player.getUniqueId().toString()); // 被邀請的玩家
 
-            if (!canUse) {
+        // 修復：使用 Warp 類別的完整權限檢查方法（包含群組成員檢查）
+        if (warp != null && warp.isPrivate()) {
+            // 使用 canUseWarp 方法進行完整的權限檢查（包含群組成員權限）
+            if (!warp.canUseWarp(player.getUniqueId().toString()) && !player.hasPermission("signwarp.admin")) {
                 // 從配置檔獲取錯誤訊息
                 String privateWarpMessage = config.getString("messages.private_warp",
-                        "&c這是一個私人傳送點，只有創建者和被邀請的玩家可以使用。");
+                        "&c這是一個私人傳送點，只有創建者、被邀請的玩家和群組成員可以使用。");
                 player.sendMessage(ChatColor.translateAlternateColorCodes('&', privateWarpMessage));
                 return;
             }
@@ -510,14 +509,12 @@ public class EventListener implements Listener {
             return; // 如果不允許跨次元傳送，直接返回
         }
 
+        // 修復：使用 Warp 類別的完整權限檢查方法（包含群組成員檢查）
         if (warp.isPrivate()) {
-            boolean canUse = warp.getCreatorUuid().equals(player.getUniqueId().toString()) || // 是創建者
-                    player.hasPermission("signwarp.admin") || // 是管理員
-                    warp.isPlayerInvited(player.getUniqueId().toString()); // 被邀請的玩家
-
-            if (!canUse) {
+            // 使用 canUseWarp 方法進行完整的權限檢查（包含群組成員權限）
+            if (!warp.canUseWarp(player.getUniqueId().toString()) && !player.hasPermission("signwarp.admin")) {
                 String privateWarpMessage = config.getString("messages.private_warp",
-                        "&c這是一個私人傳送點，只有創建者和被邀請的玩家可以使用。");
+                        "&c這是一個私人傳送點，只有創建者、被邀請的玩家和群組成員可以使用。");
                 player.sendMessage(ChatColor.translateAlternateColorCodes('&', privateWarpMessage));
 
                 // 返還已扣除的物品
