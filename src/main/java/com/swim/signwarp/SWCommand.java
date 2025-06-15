@@ -18,9 +18,11 @@ import java.util.stream.Collectors;
 
 public class SWCommand implements CommandExecutor, TabCompleter {
     private final JavaPlugin plugin;
+    private final GroupCommand groupCommand;
 
     public SWCommand(JavaPlugin plugin) {
         this.plugin = plugin;
+        this.groupCommand = new GroupCommand((SignWarp) plugin);
     }
 
     @Override
@@ -29,8 +31,13 @@ public class SWCommand implements CommandExecutor, TabCompleter {
                              @NotNull String label,
                              String[] args) {
         if (args.length == 0) {
-            sender.sendMessage("Usage: /signwarp <gui/reload/set/invite/uninvite/list-invites/list-own/tp>");
+            sender.sendMessage("Usage: /signwarp <gui/reload/set/invite/uninvite/list-invites/list-own/tp/group>");
             return true;
+        }
+
+        // 新增群組指令處理
+        if (args[0].equalsIgnoreCase("group")) {
+            return groupCommand.handleGroupCommand(sender, args);
         }
 
         // 既有的指令處理...
@@ -75,9 +82,210 @@ public class SWCommand implements CommandExecutor, TabCompleter {
             return handleWptCommand(sender, args);
         }
 
-        sender.sendMessage("Unknown subcommand. Usage: /signwarp <gui/reload/set/invite/uninvite/list-invites/list/tp>");
+        sender.sendMessage("Unknown subcommand. Usage: /signwarp <gui/reload/set/invite/uninvite/list-invites/list/tp/group>");
         return true;
     }
+
+    // ... [保留所有現有的方法，這裡省略以節省空間] ...
+
+    @Override
+    public List<String> onTabComplete(@NotNull CommandSender sender,
+                                      @NotNull Command command,
+                                      @NotNull String alias,
+                                      String[] args) {
+        List<String> completions = new ArrayList<>();
+
+        if (args.length == 1) {
+            List<String> cmds = new ArrayList<>();
+            if (sender.hasPermission("signwarp.admin")) cmds.add("gui");
+            if (sender.hasPermission("signwarp.reload")) cmds.add("reload");
+            cmds.add("set");
+            cmds.add("list-own");
+            if (sender.hasPermission("signwarp.invite")) {
+                cmds.add("invite");
+                cmds.add("uninvite");
+                cmds.add("list-invites");
+            }
+            if (sender instanceof Player) {
+                cmds.add("group");
+            }
+            if (sender instanceof Player p && p.isOp()) {
+                cmds.add("tp");
+            }
+            for (String c : cmds) {
+                if (c.toLowerCase().startsWith(args[0].toLowerCase())) {
+                    completions.add(c);
+                }
+            }
+        }
+        else if (args.length == 2) {
+            switch (args[0].toLowerCase()) {
+                case "group":
+                    // 群組子指令補全
+                    List<String> groupSubCommands = new ArrayList<>();
+                    groupSubCommands.add("create");
+                    groupSubCommands.add("list");
+                    groupSubCommands.add("info");
+                    groupSubCommands.add("add");
+                    groupSubCommands.add("remove");
+                    groupSubCommands.add("invite");
+                    groupSubCommands.add("uninvite");
+                    groupSubCommands.add("delete");
+
+                    for (String subCmd : groupSubCommands) {
+                        if (subCmd.toLowerCase().startsWith(args[1].toLowerCase())) {
+                            completions.add(subCmd);
+                        }
+                    }
+                    break;
+                case "set":
+                    for (String v : new String[]{"公共","私人"}) {
+                        if (v.toLowerCase().startsWith(args[1].toLowerCase())) {
+                            completions.add(v);
+                        }
+                    }
+                    break;
+                case "invite":
+                case "uninvite":
+                    Bukkit.getOnlinePlayers().forEach(pl -> {
+                        if (pl.getName().toLowerCase().startsWith(args[1].toLowerCase())) {
+                            completions.add(pl.getName());
+                        }
+                    });
+                    break;
+                case "list-invites":
+                    if (sender instanceof Player pl) {
+                        completions.addAll(getAccessibleWarps(pl, args[1]));
+                    }
+                    break;
+                case "tp":
+                    // 列出所有 Warp 名稱給 OP 補全
+                    Warp.getAll().stream()
+                            .map(Warp::getName)
+                            .filter(n -> n.toLowerCase().startsWith(args[1].toLowerCase()))
+                            .forEach(completions::add);
+                    break;
+                case "list-own":
+                    // 只有 OP 或管理員可以查看其他玩家的傳送點
+                    if (sender instanceof Player p && (p.isOp() || p.hasPermission("signwarp.admin"))) {
+                        // 補全線上玩家名稱
+                        Bukkit.getOnlinePlayers().forEach(pl -> {
+                            if (pl.getName().toLowerCase().startsWith(args[1].toLowerCase())) {
+                                completions.add(pl.getName());
+                            }
+                        });
+
+                        // 補全曾經創建過傳送點的玩家名稱
+                        Warp.getAll().stream()
+                                .map(Warp::getCreator)
+                                .distinct()
+                                .filter(name -> name.toLowerCase().startsWith(args[1].toLowerCase()))
+                                .forEach(completions::add);
+                    }
+                    break;
+            }
+        }
+        else if (args.length == 3) {
+            if (args[0].equalsIgnoreCase("group")) {
+                return handleGroupTabCompletion(sender, args);
+            }
+            else if (args[0].equalsIgnoreCase("set")
+                    || args[0].equalsIgnoreCase("invite")
+                    || args[0].equalsIgnoreCase("uninvite")) {
+                if (sender instanceof Player pl) {
+                    completions.addAll(getAccessibleWarps(pl, args[2]));
+                }
+            }
+        }
+        else if (args.length == 4 && args[0].equalsIgnoreCase("group")) {
+            return handleGroupTabCompletion(sender, args);
+        }
+        else if (args.length >= 4 && args[0].equalsIgnoreCase("group") && args[1].equalsIgnoreCase("add")) {
+            // 對於 /wp group add <群組名稱> <傳送點1> [傳送點2] ... 的多個傳送點補全
+            return handleGroupTabCompletion(sender, args);
+        }
+
+        return completions;
+    }
+
+    /**
+     * 處理群組指令的 Tab 補全
+     */
+    private List<String> handleGroupTabCompletion(CommandSender sender, String[] args) {
+        List<String> completions = new ArrayList<>();
+
+        if (!(sender instanceof Player player)) {
+            return completions;
+        }
+
+        String subCommand = args[1].toLowerCase();
+
+        switch (subCommand) {
+            case "add":
+            case "remove":
+            case "invite":
+            case "uninvite":
+            case "info":
+            case "delete":
+                if (args.length == 3) {
+                    // 補全群組名稱
+                    List<WarpGroup> playerGroups = WarpGroup.getPlayerGroups(player.getUniqueId().toString());
+                    for (WarpGroup group : playerGroups) {
+                        if (group.getGroupName().toLowerCase().startsWith(args[2].toLowerCase())) {
+                            completions.add(group.getGroupName());
+                        }
+                    }
+                } else if (args.length == 4) {
+                    // 根據不同的子指令提供不同的補全
+                    switch (subCommand) {
+                        case "add":
+                        case "remove":
+                            // 補全傳送點名稱（只顯示玩家自己的私人傳送點）
+                            List<Warp> playerWarps = Warp.getPlayerWarps(player.getUniqueId().toString());
+                            for (Warp warp : playerWarps) {
+                                if (warp.isPrivate() &&
+                                        warp.getName().toLowerCase().startsWith(args[3].toLowerCase())) {
+                                    completions.add(warp.getName());
+                                }
+                            }
+                            break;
+                        case "invite":
+                        case "uninvite":
+                            // 補全線上玩家名稱
+                            Bukkit.getOnlinePlayers().forEach(pl -> {
+                                if (!pl.equals(player) &&
+                                        pl.getName().toLowerCase().startsWith(args[3].toLowerCase())) {
+                                    completions.add(pl.getName());
+                                }
+                            });
+                            break;
+                    }
+                } else if (args.length >= 5 && subCommand.equals("add")) {
+                    // 對於 add 指令的多個傳送點補全
+                    List<Warp> playerWarps = Warp.getPlayerWarps(player.getUniqueId().toString());
+                    for (Warp warp : playerWarps) {
+                        if (warp.isPrivate() &&
+                                warp.getName().toLowerCase().startsWith(args[args.length - 1].toLowerCase())) {
+                            completions.add(warp.getName());
+                        }
+                    }
+                }
+                break;
+        }
+
+        return completions;
+    }
+
+    private List<String> getAccessibleWarps(Player player, String prefix) {
+        return Warp.getAll().stream()
+                .filter(w -> w.getCreatorUuid().equals(player.getUniqueId().toString())
+                        || player.hasPermission("signwarp.admin"))
+                .map(Warp::getName)
+                .filter(n -> n.toLowerCase().startsWith(prefix.toLowerCase()))
+                .collect(Collectors.toList());
+    }
+
+    // ... [保留所有其他現有的方法] ...
 
     private void handleGuiCommand(CommandSender sender) {
         if (sender instanceof Player player) {
@@ -445,101 +653,5 @@ public class SWCommand implements CommandExecutor, TabCompleter {
         player.sendMessage(ChatColor.GREEN + "已傳送到: " + warp.getName() +
                 " (建立者: " + warp.getCreator() + ")");
         return true;
-    }
-
-    @Override
-    public List<String> onTabComplete(@NotNull CommandSender sender,
-                                      @NotNull Command command,
-                                      @NotNull String alias,
-                                      String[] args) {
-        List<String> completions = new ArrayList<>();
-
-        if (args.length == 1) {
-            List<String> cmds = new ArrayList<>();
-            if (sender.hasPermission("signwarp.admin")) cmds.add("gui");
-            if (sender.hasPermission("signwarp.reload")) cmds.add("reload");
-            cmds.add("set");
-            cmds.add("list-own");
-            if (sender.hasPermission("signwarp.invite")) {
-                cmds.add("invite");
-                cmds.add("uninvite");
-                cmds.add("list-invites");
-            }
-            if (sender instanceof Player p && p.isOp()) {
-                cmds.add("tp");
-            }
-            for (String c : cmds) {
-                if (c.toLowerCase().startsWith(args[0].toLowerCase())) {
-                    completions.add(c);
-                }
-            }
-        }
-        else if (args.length == 2) {
-            switch (args[0].toLowerCase()) {
-                case "set":
-                    for (String v : new String[]{"公共","私人"}) {
-                        if (v.toLowerCase().startsWith(args[1].toLowerCase())) {
-                            completions.add(v);
-                        }
-                    }
-                    break;
-                case "invite":
-                case "uninvite":
-                    Bukkit.getOnlinePlayers().forEach(pl -> {
-                        if (pl.getName().toLowerCase().startsWith(args[1].toLowerCase())) {
-                            completions.add(pl.getName());
-                        }
-                    });
-                    break;
-                case "list-invites":
-                    if (sender instanceof Player pl) {
-                        completions.addAll(getAccessibleWarps(pl, args[1]));
-                    }
-                    break;
-                case "tp":
-                    // 列出所有 Warp 名稱給 OP 補全
-                    Warp.getAll().stream()
-                            .map(Warp::getName)
-                            .filter(n -> n.toLowerCase().startsWith(args[1].toLowerCase()))
-                            .forEach(completions::add);
-                    break;
-                case "list-own":
-                    // 只有 OP 或管理員可以查看其他玩家的傳送點
-                    if (sender instanceof Player p && (p.isOp() || p.hasPermission("signwarp.admin"))) {
-                        // 補全線上玩家名稱
-                        Bukkit.getOnlinePlayers().forEach(pl -> {
-                            if (pl.getName().toLowerCase().startsWith(args[1].toLowerCase())) {
-                                completions.add(pl.getName());
-                            }
-                        });
-
-                        // 補全曾經創建過傳送點的玩家名稱
-                        Warp.getAll().stream()
-                                .map(Warp::getCreator)
-                                .distinct()
-                                .filter(name -> name.toLowerCase().startsWith(args[1].toLowerCase()))
-                                .forEach(completions::add);
-                    }
-                    break;
-            }
-        }
-        else if (args.length == 3 && (args[0].equalsIgnoreCase("set")
-                || args[0].equalsIgnoreCase("invite")
-                || args[0].equalsIgnoreCase("uninvite"))) {
-            if (sender instanceof Player pl) {
-                completions.addAll(getAccessibleWarps(pl, args[2]));
-            }
-        }
-
-        return completions;
-    }
-
-    private List<String> getAccessibleWarps(Player player, String prefix) {
-        return Warp.getAll().stream()
-                .filter(w -> w.getCreatorUuid().equals(player.getUniqueId().toString())
-                        || player.hasPermission("signwarp.admin"))
-                .map(Warp::getName)
-                .filter(n -> n.toLowerCase().startsWith(prefix.toLowerCase()))
-                .collect(Collectors.toList());
     }
 }

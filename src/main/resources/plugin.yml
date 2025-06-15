@@ -62,3 +62,12 @@ permissions:
   signwarp.tp:
     description: "允許使用 /wp wpt 指令（OP 專用）"
     default: op
+  signwarp.group.create:
+    description: 建立群組
+    default: true
+  signwarp.group.manage:
+    description: 管理群組（新增/移除傳送點和成員）
+    default: true
+  signwarp.group.admin:
+    description: 管理任何群組（管理員權限）
+    default: op

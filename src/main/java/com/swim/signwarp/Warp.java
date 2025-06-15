@@ -385,4 +385,38 @@ public class Warp {
         }
         return invites;
     }
+    // 在 Warp 類別中新增方法，檢查玩家是否可以使用傳送點（包含群組權限）
+    public boolean canUseWarp(String playerUuid) {
+        // 1. 檢查是否為公共傳送點
+        if (!isPrivate) return true;
+
+        // 2. 檢查是否為建立者
+        if (creatorUuid.equals(playerUuid)) return true;
+
+        // 3. 檢查是否被直接邀請
+        if (isPlayerInvited(playerUuid)) return true;
+
+        // 4. 檢查是否為包含此傳送點的群組成員
+        return isPlayerInGroupWithWarp(playerUuid, warpName);
+    }
+
+    // 檢查玩家是否為包含指定傳送點的群組成員
+    private static boolean isPlayerInGroupWithWarp(String playerUuid, String warpName) {
+        try (Connection conn = DriverManager.getConnection(DB_URL)) {
+            String sql = "SELECT wgw.group_name FROM warp_group_warps wgw " +
+                    "WHERE wgw.warp_name = ? AND (" +
+                    "EXISTS (SELECT 1 FROM warp_groups wg WHERE wg.group_name = wgw.group_name AND wg.owner_uuid = ?) OR " +
+                    "EXISTS (SELECT 1 FROM warp_group_members wgm WHERE wgm.group_name = wgw.group_name AND wgm.member_uuid = ?)" +
+                    ")";
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setString(1, warpName);
+                pstmt.setString(2, playerUuid);
+                pstmt.setString(3, playerUuid);
+                return pstmt.executeQuery().next();
+            }
+        } catch (SQLException e) {
+            logger.severe("Failed to check if player is in group with warp: " + e.getMessage());
+            return false;
+        }
+    }
 }

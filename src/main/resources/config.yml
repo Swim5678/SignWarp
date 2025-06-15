@@ -16,7 +16,18 @@ cross-dimension-teleport:
   enabled: true
   # OP 是否可以無視跨次元限制 (true 允許, false 禁止)
   op-bypass: true
-
+# 群組功能相關設定
+warp-groups:
+  # 是否啟用群組功能
+  enabled: true
+  # 每位玩家最多可建立的群組數量
+  max-groups-per-player: 5
+  # 每個群組最多可包含的傳送點數量
+  max-warps-per-group: 10
+  # 每個群組最多可邀請的成員數量
+  max-members-per-group: 20
+  # 是否允許普通玩家使用群組功能（建議設為 true）
+  allow-normal-players: true
 ###############################################################################
 # 以下設定只影響建立 Warp Target (WPT) 標誌
 ###############################################################################
@@ -83,3 +94,27 @@ messages:
   creator-display-format: "&7建立者: &f{creator}"
   cross_dimension_disabled: "&c跨次元傳送已被禁用！您無法傳送到位於 &e{target-world} &c世界的傳送點。"
   warp_world_not_found: "&c傳送點所在的世界不存在或未載入！請聯絡管理員。"
+  player_not_online: "&c玩家 '{player}' 目前不在線上！請等待玩家上線後再進行操作。"
+  group_created: "&a成功建立群組 '{group-name}'！"
+  group_deleted: "&a群組 '{group-name}' 已刪除。"
+  warp_added_to_group: "&a傳送點 '{warp-name}' 已加入群組 '{group-name}'。"
+  warp_removed_from_group: "&a傳送點 '{warp-name}' 已從群組 '{group-name}' 中移除。"
+  player_invited_to_group: "&a玩家 '{player}' 已被邀請加入群組 '{group-name}'。"
+  player_removed_from_group: "&a玩家 '{player}' 已從群組 '{group-name}' 中移除。"
+  group_not_found: "&c找不到群組 '{group-name}'。"
+  not_group_owner: "&c您不是此群組的擁有者！"
+  warp_not_private: "&c只有私人傳送點才能加入群組！"
+  warp_already_in_group: "&c傳送點 '{warp-name}' 已經在群組 '{existing-group}' 中。"
+  max_groups_reached: "&c您已達到群組建立上限！"
+  no_permission_use_warp: "&c您沒有權限使用此傳送點！"
+  teleport_success: "&a成功傳送到 '{warp-name}'！"
+  teleport_failed: "&c傳送失敗，請稍後再試。"
+  group_help_header: "&a=== SignWarp 群組指令說明 ==="
+  group_help_create: "&b/wp group create <群組名稱> &7- 建立新群組"
+  group_help_list: "&b/wp group list &7- 查看您的群組列表"
+  group_help_info: "&b/wp group info <群組名稱> &7- 查看群組詳細資訊"
+  group_help_add: "&b/wp group add <群組名稱> <傳送點> &7- 將傳送點加入群組"
+  group_help_remove: "&b/wp group remove <群組名稱> <傳送點> &7- 從群組移除傳送點"
+  group_help_invite: "&b/wp group invite <群組名稱> <玩家> &7- 邀請玩家加入群組"
+  group_help_uninvite: "&b/wp group uninvite <群組名稱> <玩家> &7- 移除群組成員"
+  group_help_delete: "&b/wp group delete <群組名稱> &7- 刪除群組"
