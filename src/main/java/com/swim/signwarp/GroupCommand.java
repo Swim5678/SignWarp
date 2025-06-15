@@ -86,11 +86,6 @@ public class GroupCommand {
             return true;
         }
 
-        if (!player.hasPermission("signwarp.group.manage")) {
-            player.sendMessage(ChatColor.RED + "您沒有權限管理群組！");
-            return true;
-        }
-
         String groupName = args[2];
         WarpGroup group = WarpGroup.getByName(groupName);
 
@@ -153,11 +148,6 @@ public class GroupCommand {
             return true;
         }
 
-        if (!player.hasPermission("signwarp.group.manage")) {
-            player.sendMessage(ChatColor.RED + "您沒有權限管理群組！");
-            return true;
-        }
-
         String groupName = args[2];
         String warpName = args[3];
 
@@ -187,11 +177,6 @@ public class GroupCommand {
     private boolean handleInvitePlayer(Player player, String[] args) {
         if (args.length < 4) {
             player.sendMessage(ChatColor.RED + "用法: /signwarp group invite <群組名稱> <玩家名稱>");
-            return true;
-        }
-
-        if (!player.hasPermission("signwarp.group.manage")) {
-            player.sendMessage(ChatColor.RED + "您沒有權限管理群組！");
             return true;
         }
 
@@ -246,10 +231,6 @@ public class GroupCommand {
             return true;
         }
 
-        if (!player.hasPermission("signwarp.group.manage")) {
-            player.sendMessage(ChatColor.RED + "您沒有權限管理群組！");
-            return true;
-        }
 
         String groupName = args[2];
         String targetPlayerName = args[3];
