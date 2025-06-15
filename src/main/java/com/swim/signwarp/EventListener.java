@@ -455,6 +455,28 @@ public class EventListener implements Listener {
         // 呼叫傳送方法
         teleportPlayer(player, signData.warpName);
     }
+    /**
+     * 將世界名稱轉換為友善的中文顯示名稱
+     * @param worldName 原始世界名稱
+     * @return 轉換後的世界名稱
+     */
+    private String getDisplayWorldName(String worldName) {
+        if (worldName == null) {
+            return "未知世界";
+        }
+
+        // 處理三大世界的名稱轉換
+        if (worldName.equals("world") || worldName.endsWith("_overworld")) {
+            return "主世界";
+        } else if (worldName.equals("world_nether") || worldName.endsWith("_nether")) {
+            return "地獄";
+        } else if (worldName.equals("world_the_end") || worldName.endsWith("_the_end")) {
+            return "終界";
+        }
+
+        // 如果不是三大世界，直接返回原始名稱
+        return worldName;
+    }
 
     /**
      * 處理傳送邏輯：
@@ -686,7 +708,7 @@ public class EventListener implements Listener {
             String message = config.getString("messages.cross_dimension_disabled");
             if (message != null) {
                 // 直接使用 warpWorld.getName() 因為我們已經確認它不是 null
-                String targetWorldName = warpWorld.getName();
+                String targetWorldName = getDisplayWorldName(warpWorld.getName());
                 player.sendMessage(ChatColor.translateAlternateColorCodes('&',
                         message.replace("{target-world}", targetWorldName)));
             }
