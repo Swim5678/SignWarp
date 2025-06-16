@@ -105,16 +105,6 @@ max-warps-per-player: 10
 op-unlimited-warps: true
 ```
 
-### 音效與特效
-
-```yaml
-# 傳送音效
-teleport-sound: minecraft:entity.enderman.teleport
-
-# 傳送特效
-teleport-effect: ENDER_SIGNAL
-```
-
 ## 🎯 指令系統
 
 | 指令 | 縮寫 | 功能描述 | 權限需求 |
