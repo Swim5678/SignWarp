@@ -2,7 +2,7 @@
 
 ##  簡介
 
-SignWarp 是一款專為 Minecraft Paper 伺服器設計的傳送插件，讓玩家能夠透過簡單的告示牌系統建立個人、群組或公共的傳送點。無論是建立城市間的交通網絡，或是打造專屬的探險據點，都能輕鬆實現！
+SignWarpX 是一款專為 Minecraft Paper 伺服器設計的傳送插件，讓玩家能夠透過簡單的告示牌系統建立個人、群組或公共的傳送點。無論是建立城市間的交通網絡，或是打造專屬的探險據點，都能輕鬆實現！
 
 ## 功能特色
 
@@ -40,7 +40,7 @@ SignWarp 是一款專為 Minecraft Paper 伺服器設計的傳送插件，讓玩
 - **Java 版本**: Java 21 或更高版本
 
 ### 安裝步驟
-1. 下載最新版本的 [SignWarp.jar](https://github.com/Swim5678/SignWarp/releases) 檔案
+1. 下載最新版本的 [SignWarpX.jar](https://github.com/Swim5678/SignWarpX/releases) 檔案
 2. 將檔案放入伺服器的 `plugins` 資料夾
 3. 重新啟動伺服器
 4. 編輯 `config.yml` 來自訂設定（可選）
@@ -236,8 +236,8 @@ messages:
 
 如果您在使用過程中遇到任何問題或有功能建議，歡迎：
 
--  [回報問題](https://github.com/Swim5678/SignWarp/issues)
--  [提出功能請求](https://github.com/Swim5678/SignWarp/issues)
+-  [回報問題](https://github.com/Swim5678/SignWarpX/issues)
+-  [提出功能請求](https://github.com/Swim5678/SignWarpX/issues)
 -  給我們一個星星來支持開發
 
 ##  授權條款
