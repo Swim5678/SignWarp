@@ -1,8 +1,7 @@
-name: SignWarp
+name: SignWarpX
 version: '${project.version}'
 description: 一個基於告示牌的傳送點插件，支援私人與公共傳送點功能，MADE BY SWIM
 author: Swim
-website: https://verdo568.vercel.app/
 api-version: '1.21'
 main: com.swim.signwarp.SignWarp
 commands:

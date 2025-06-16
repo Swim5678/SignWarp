@@ -5,11 +5,11 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.swim</groupId>
-    <artifactId>SignWarp</artifactId>
+    <artifactId>SignWarpX</artifactId>
     <version>1.1.8</version>
     <packaging>jar</packaging>
 
-    <name>SignWarp</name>
+    <name>SignWarpX</name>
 
     <properties>
         <java.version>21</java.version>
