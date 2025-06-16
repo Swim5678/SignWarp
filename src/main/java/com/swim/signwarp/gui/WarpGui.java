@@ -90,7 +90,7 @@ public class WarpGui {
             if (!invites.isEmpty()) {
                 lore.add(ChatColor.LIGHT_PURPLE + "已邀請玩家:");
                 for (WarpInvite invite : invites) {
-                    lore.add(ChatColor.GRAY + "- " + invite.getInvitedName());
+                    lore.add(ChatColor.GRAY + "- " + invite.invitedName());
                 }
             }
         }

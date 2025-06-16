@@ -231,8 +231,8 @@ public class SWCommand implements CommandExecutor, TabCompleter {
                     // 補全群組名稱
                     List<WarpGroup> playerGroups = WarpGroup.getPlayerGroups(player.getUniqueId().toString());
                     for (WarpGroup group : playerGroups) {
-                        if (group.getGroupName().toLowerCase().startsWith(args[2].toLowerCase())) {
-                            completions.add(group.getGroupName());
+                        if (group.groupName().toLowerCase().startsWith(args[2].toLowerCase())) {
+                            completions.add(group.groupName());
                         }
                     }
                 } else if (args.length == 4) {
@@ -509,7 +509,7 @@ public class SWCommand implements CommandExecutor, TabCompleter {
             if (none != null) player.sendMessage(ChatColor.translateAlternateColorCodes('&', none));
         } else {
             for (WarpInvite wi : invites) {
-                player.sendMessage(ChatColor.GRAY + "- " + wi.getInvitedName());
+                player.sendMessage(ChatColor.GRAY + "- " + wi.invitedName());
             }
         }
     }

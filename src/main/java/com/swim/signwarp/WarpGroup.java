@@ -9,27 +9,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
 
-public class WarpGroup {
+public record WarpGroup(String groupName, String ownerUuid, String ownerName, String createdAt) {
     private static final String DB_URL = "jdbc:sqlite:" + JavaPlugin.getPlugin(SignWarp.class).getDataFolder() + File.separator + "warps.db";
     private static final Logger logger = JavaPlugin.getPlugin(SignWarp.class).getLogger();
-
-    private final String groupName;
-    private final String ownerUuid;
-    private final String ownerName;
-    private final String createdAt;
-
-    public WarpGroup(String groupName, String ownerUuid, String ownerName, String createdAt) {
-        this.groupName = groupName;
-        this.ownerUuid = ownerUuid;
-        this.ownerName = ownerName;
-        this.createdAt = createdAt;
-    }
-
-    // Getters
-    public String getGroupName() { return groupName; }
-    public String getOwnerUuid() { return ownerUuid; }
-    public String getOwnerName() { return ownerName; }
-    public String getCreatedAt() { return createdAt; }
 
     // 儲存群組到資料庫
     public void save() {
@@ -310,19 +292,26 @@ public class WarpGroup {
     }
 
     // 內部類別：群組成員
-    public static class GroupMember {
-        private final String uuid;
-        private final String name;
-        private final String invitedAt;
+        public record GroupMember(String uuid, String name, String invitedAt) {
+    }
 
-        public GroupMember(String uuid, String name, String invitedAt) {
-            this.uuid = uuid;
-            this.name = name;
-            this.invitedAt = invitedAt;
+    public static List<WarpGroup> getAllGroups() {
+        List<WarpGroup> groups = new ArrayList<>();
+        try (Connection conn = DriverManager.getConnection(DB_URL)) {
+            String sql = "SELECT * FROM warp_groups";
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                ResultSet rs = pstmt.executeQuery();
+                while (rs.next()) {
+                    String groupName = rs.getString("group_name");
+                    String ownerUuid = rs.getString("owner_uuid");
+                    String ownerName = rs.getString("owner_name");
+                    String createdAt = rs.getString("created_at");
+                    groups.add(new WarpGroup(groupName, ownerUuid, ownerName, createdAt));
+                }
+            }
+        } catch (SQLException e) {
+            logger.severe("Failed to get all groups: " + e.getMessage());
         }
-
-        public String getUuid() { return uuid; }
-        public String getName() { return name; }
-        public String getInvitedAt() { return invitedAt; }
+        return groups;
     }
 }

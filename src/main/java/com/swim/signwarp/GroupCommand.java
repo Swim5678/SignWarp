@@ -5,6 +5,7 @@ import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class GroupCommand {
@@ -27,6 +28,9 @@ public class GroupCommand {
 
         String subCommand = args[1].toLowerCase();
 
+        // 在執行任何群組子命令前，先清理無效的傳送點
+        cleanupInvalidWarpsFromAllGroups();
+
         return switch (subCommand) {
             case "create" -> handleCreateGroup(player, args);
             case "add" -> handleAddWarp(player, args);
@@ -42,7 +46,43 @@ public class GroupCommand {
             }
         };
     }
+    /**
+     * 清理所有群組中不存在的傳送點
+     * 無論使用者是否有權限，都會執行此清理作業
+     */
+    private void cleanupInvalidWarpsFromAllGroups() {
+        try {
+            // 取得所有群組
+            List<WarpGroup> allGroups = WarpGroup.getAllGroups();
 
+            for (WarpGroup group : allGroups) {
+                List<String> groupWarps = group.getGroupWarps();
+                List<String> invalidWarps = new ArrayList<>();
+
+                // 檢查每個群組中的傳送點是否存在
+                for (String warpName : groupWarps) {
+                    Warp warp = Warp.getByName(warpName);
+                    if (warp == null) {
+                        // 傳送點不存在，加入待刪除清單
+                        invalidWarps.add(warpName);
+                    }
+                }
+
+                // 刪除無效的傳送點記錄
+                for (String invalidWarp : invalidWarps) {
+                    group.removeWarp(invalidWarp);
+                    plugin.getLogger().info("已從群組 '" + group.groupName() + "' 中移除不存在的傳送點: " + invalidWarp);
+                }
+
+                if (!invalidWarps.isEmpty()) {
+                    plugin.getLogger().info("群組 '" + group.groupName() + "' 清理完成，移除了 " + invalidWarps.size() + " 個無效傳送點");
+                }
+            }
+        } catch (Exception e) {
+            plugin.getLogger().severe("清理群組中無效傳送點時發生錯誤: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
     /**
      * 檢查玩家是否有群組管理權限
      * OP 擁有所有群組的完整管理權限，不受任何限制
@@ -59,7 +99,7 @@ public class GroupCommand {
         }
 
         // 檢查是否為群組擁有者
-        return group.getOwnerUuid().equals(player.getUniqueId().toString());
+        return group.ownerUuid().equals(player.getUniqueId().toString());
     }
 
     /**
@@ -78,7 +118,7 @@ public class GroupCommand {
         }
 
         // 檢查是否為群組擁有者
-        if (group.getOwnerUuid().equals(player.getUniqueId().toString())) {
+        if (group.ownerUuid().equals(player.getUniqueId().toString())) {
             return true;
         }
 
@@ -332,7 +372,7 @@ public class GroupCommand {
         for (WarpGroup group : groups) {
             List<String> warps = group.getGroupWarps();
             List<WarpGroup.GroupMember> members = group.getGroupMembers();
-            player.sendMessage(ChatColor.AQUA + group.getGroupName() +
+            player.sendMessage(ChatColor.AQUA + group.groupName() +
                     ChatColor.GRAY + " - 傳送點: " + warps.size() +
                     ", 成員: " + members.size());
         }
@@ -361,7 +401,7 @@ public class GroupCommand {
         }
 
         player.sendMessage(ChatColor.GREEN + "=== 群組資訊: " + groupName + " ===");
-        player.sendMessage(ChatColor.AQUA + "擁有者: " + group.getOwnerName());
+        player.sendMessage(ChatColor.AQUA + "擁有者: " + group.ownerName());
 
         List<String> warps = group.getGroupWarps();
         player.sendMessage(ChatColor.YELLOW + "傳送點 (" + warps.size() + "):");
@@ -372,7 +412,7 @@ public class GroupCommand {
         List<WarpGroup.GroupMember> members = group.getGroupMembers();
         player.sendMessage(ChatColor.LIGHT_PURPLE + "成員 (" + members.size() + "):");
         for (WarpGroup.GroupMember member : members) {
-            player.sendMessage(ChatColor.GRAY + "- " + member.getName());
+            player.sendMessage(ChatColor.GRAY + "- " + member.name());
         }
         return true;
     }
