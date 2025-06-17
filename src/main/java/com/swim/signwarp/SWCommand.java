@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+@SuppressWarnings("ALL")
 public class SWCommand implements CommandExecutor, TabCompleter {
     private final JavaPlugin plugin;
     private final GroupCommand groupCommand;
@@ -24,6 +25,21 @@ public class SWCommand implements CommandExecutor, TabCompleter {
     public SWCommand(JavaPlugin plugin) {
         this.plugin = plugin;
         this.groupCommand = new GroupCommand((SignWarp) plugin);
+    }
+
+    private static @NotNull String getString(List<Warp> playerWarps, int i, String warpListFormat) {
+        Warp warp = playerWarps.get(i);
+        String visibility = warp.isPrivate() ? "私人" : "公共";
+        return warpListFormat
+                .replace("{index}", String.valueOf(i + 1))
+                .replace("{warp-name}", warp.getName())
+                .replace("{visibility}", visibility)
+                .replace("{world}", Objects.requireNonNull(warp.getLocation().getWorld()).getName())
+                .replace("{x}", String.valueOf((int) warp.getLocation().getX()))
+                .replace("{y}", String.valueOf((int) warp.getLocation().getY()))
+                .replace("{z}", String.valueOf((int) warp.getLocation().getZ()))
+                .replace("{creator}", warp.getCreator())
+                .replace("{created-at}", warp.getFormattedCreatedAt());
     }
 
     @Override
@@ -291,7 +307,7 @@ public class SWCommand implements CommandExecutor, TabCompleter {
                                 break;
                         }
                     }
-                } else if (args.length >= 5 && subCommand.equals("add")) {
+                } else if (subCommand.equals("add")) {
                     // 多個傳送點的補全
                     String groupName = args[2];
                     WarpGroup group = WarpGroup.getByName(groupName);
@@ -301,10 +317,7 @@ public class SWCommand implements CommandExecutor, TabCompleter {
                         List<String> groupWarps = group.getGroupWarps();
 
                         // 排除已經在參數中的傳送點
-                        List<String> alreadyAdded = new ArrayList<>();
-                        for (int i = 3; i < args.length - 1; i++) {
-                            alreadyAdded.add(args[i]);
-                        }
+                        List<String> alreadyAdded = new ArrayList<>(Arrays.asList(args).subList(3, args.length - 1));
 
                         for (Warp warp : playerWarps) {
                             if (warp.isPrivate() &&
@@ -362,12 +375,10 @@ public class SWCommand implements CommandExecutor, TabCompleter {
         }
 
         // 對於某些操作，群組成員也有權限
-        switch (operation.toLowerCase()) {
-            case "info":
-                return WarpGroup.isPlayerInGroup(group.groupName(), player.getUniqueId().toString());
-            default:
-                return false; // 其他操作只有擁有者和管理員可以執行
+        if (operation.equalsIgnoreCase("info")) {
+            return WarpGroup.isPlayerInGroup(group.groupName(), player.getUniqueId().toString());
         }
+        return false; // 其他操作只有擁有者和管理員可以執行
     }
 
     /**
@@ -700,21 +711,6 @@ public class SWCommand implements CommandExecutor, TabCompleter {
             String totalMsg = totalWarpsMsg.replace("{count}", String.valueOf(playerWarps.size()));
             player.sendMessage(ChatColor.translateAlternateColorCodes('&', totalMsg));
         }
-    }
-
-    private static @NotNull String getString(List<Warp> playerWarps, int i, String warpListFormat) {
-        Warp warp = playerWarps.get(i);
-        String visibility = warp.isPrivate() ? "私人" : "公共";
-        return warpListFormat
-                .replace("{index}", String.valueOf(i + 1))
-                .replace("{warp-name}", warp.getName())
-                .replace("{visibility}", visibility)
-                .replace("{world}", Objects.requireNonNull(warp.getLocation().getWorld()).getName())
-                .replace("{x}", String.valueOf((int) warp.getLocation().getX()))
-                .replace("{y}", String.valueOf((int) warp.getLocation().getY()))
-                .replace("{z}", String.valueOf((int) warp.getLocation().getZ()))
-                .replace("{creator}", warp.getCreator())
-                .replace("{created-at}", warp.getFormattedCreatedAt());
     }
 
     /**
