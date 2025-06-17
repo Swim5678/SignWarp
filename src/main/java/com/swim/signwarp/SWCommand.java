@@ -581,18 +581,7 @@ public class SWCommand implements CommandExecutor, TabCompleter {
         } else {
             // 列出所有傳送點
             for (int i = 0; i < playerWarps.size(); i++) {
-                Warp warp = playerWarps.get(i);
-                String visibility = warp.isPrivate() ? "私人" : "公共";
-                String formattedMsg = warpListFormat
-                        .replace("{index}", String.valueOf(i + 1))
-                        .replace("{warp-name}", warp.getName())
-                        .replace("{visibility}", visibility)
-                        .replace("{world}", Objects.requireNonNull(warp.getLocation().getWorld()).getName())
-                        .replace("{x}", String.valueOf((int) warp.getLocation().getX()))
-                        .replace("{y}", String.valueOf((int) warp.getLocation().getY()))
-                        .replace("{z}", String.valueOf((int) warp.getLocation().getZ()))
-                        .replace("{creator}", warp.getCreator())
-                        .replace("{created-at}", warp.getFormattedCreatedAt());
+                String formattedMsg = getString(playerWarps, i, warpListFormat);
 
                 player.sendMessage(ChatColor.translateAlternateColorCodes('&', formattedMsg));
             }
@@ -601,6 +590,21 @@ public class SWCommand implements CommandExecutor, TabCompleter {
             String totalMsg = totalWarpsMsg.replace("{count}", String.valueOf(playerWarps.size()));
             player.sendMessage(ChatColor.translateAlternateColorCodes('&', totalMsg));
         }
+    }
+
+    private static @NotNull String getString(List<Warp> playerWarps, int i, String warpListFormat) {
+        Warp warp = playerWarps.get(i);
+        String visibility = warp.isPrivate() ? "私人" : "公共";
+        return warpListFormat
+                .replace("{index}", String.valueOf(i + 1))
+                .replace("{warp-name}", warp.getName())
+                .replace("{visibility}", visibility)
+                .replace("{world}", Objects.requireNonNull(warp.getLocation().getWorld()).getName())
+                .replace("{x}", String.valueOf((int) warp.getLocation().getX()))
+                .replace("{y}", String.valueOf((int) warp.getLocation().getY()))
+                .replace("{z}", String.valueOf((int) warp.getLocation().getZ()))
+                .replace("{creator}", warp.getCreator())
+                .replace("{created-at}", warp.getFormattedCreatedAt());
     }
 
     /**
