@@ -117,11 +117,6 @@ public class GroupCommand {
                 // 刪除無效的傳送點記錄
                 for (String invalidWarp : invalidWarps) {
                     group.removeWarp(invalidWarp);
-                    plugin.getLogger().info("已從群組 '" + group.groupName() + "' 中移除不存在的傳送點: " + invalidWarp);
-                }
-
-                if (!invalidWarps.isEmpty()) {
-                    plugin.getLogger().info("群組 '" + group.groupName() + "' 清理完成，移除了 " + invalidWarps.size() + " 個無效傳送點");
                 }
             }
         } catch (Exception e) {
