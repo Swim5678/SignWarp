@@ -510,7 +510,9 @@ public class GroupCommand {
         };
 
         for (String message : helpMessages) {
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
+            if (message != null) {
+                player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
+            }
         }
     }
 }
