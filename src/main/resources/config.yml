@@ -71,7 +71,7 @@ messages:
   cant_modify_others_warp: "&c您只能更改自己創建的傳送點！"
   set_visibility_usage: "&c用法: /wp set <公共|私人> <傳送點名稱>"
   invalid_visibility: "&c使用權限必須是 '公共' 或 '私人'"
-  private_warp: "&c這是一個私人傳送點，只有創建者和被邀請的玩家可以使用。"
+  private_warp: "&c權限不足。"
   invite_success: "&a已成功邀請 {player} 使用傳送點 '{warp-name}'！"
   invite_received: "&a{inviter} 邀請你使用傳送點 '{warp-name}'！"
   invite_failed: "&c無法邀請玩家使用此傳送點！"
