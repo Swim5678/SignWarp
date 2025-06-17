@@ -12,6 +12,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -86,8 +87,6 @@ public class SWCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
-    // ... [保留所有現有的方法，這裡省略以節省空間] ...
-
     @Override
     public List<String> onTabComplete(@NotNull CommandSender sender,
                                       @NotNull Command command,
@@ -120,23 +119,8 @@ public class SWCommand implements CommandExecutor, TabCompleter {
         } else if (args.length == 2) {
             switch (args[0].toLowerCase()) {
                 case "group":
-                    // 群組子指令補全
-                    List<String> groupSubCommands = new ArrayList<>();
-                    groupSubCommands.add("create");
-                    groupSubCommands.add("list");
-                    groupSubCommands.add("info");
-                    groupSubCommands.add("add");
-                    groupSubCommands.add("remove");
-                    groupSubCommands.add("invite");
-                    groupSubCommands.add("uninvite");
-                    groupSubCommands.add("delete");
-
-                    for (String subCmd : groupSubCommands) {
-                        if (subCmd.toLowerCase().startsWith(args[1].toLowerCase())) {
-                            completions.add(subCmd);
-                        }
-                    }
-                    break;
+                    // 直接呼叫群組 tab 補全方法
+                    return handleGroupTabCompletion(sender, args);
                 case "set":
                     for (String v : new String[]{"公共", "私人"}) {
                         if (v.toLowerCase().startsWith(args[1].toLowerCase())) {
@@ -183,21 +167,16 @@ public class SWCommand implements CommandExecutor, TabCompleter {
                     }
                     break;
             }
-        } else if (args.length == 3) {
+        } else if (args.length >= 3) {
             if (args[0].equalsIgnoreCase("group")) {
                 return handleGroupTabCompletion(sender, args);
             } else if (args[0].equalsIgnoreCase("set")
                     || args[0].equalsIgnoreCase("invite")
                     || args[0].equalsIgnoreCase("uninvite")) {
-                if (sender instanceof Player pl) {
+                if (sender instanceof Player pl && args.length == 3) {
                     completions.addAll(getAccessibleWarps(pl, args[2]));
                 }
             }
-        } else if (args.length == 4 && args[0].equalsIgnoreCase("group")) {
-            return handleGroupTabCompletion(sender, args);
-        } else if (args.length >= 4 && args[0].equalsIgnoreCase("group") && args[1].equalsIgnoreCase("add")) {
-            // 對於 /wp group add <群組名稱> <傳送點1> [傳送點2] ... 的多個傳送點補全
-            return handleGroupTabCompletion(sender, args);
         }
 
         return completions;
@@ -213,6 +192,28 @@ public class SWCommand implements CommandExecutor, TabCompleter {
             return completions;
         }
 
+        // 檢查群組功能是否啟用
+        if (!plugin.getConfig().getBoolean("warp-groups.enabled", true)) {
+            return completions;
+        }
+
+        // 檢查玩家權限（與 GroupCommand 中的邏輯一致）
+        if (!canPlayerUseGroups(player)) {
+            return completions;
+        }
+
+        if (args.length == 2) {
+            // 第一層子指令補全
+            List<String> subCommands = Arrays.asList("create", "list", "info", "add", "remove", "invite", "uninvite", "delete");
+            return subCommands.stream()
+                    .filter(cmd -> cmd.toLowerCase().startsWith(args[1].toLowerCase()))
+                    .collect(Collectors.toList());
+        }
+
+        if (args.length < 3) {
+            return completions;
+        }
+
         String subCommand = args[1].toLowerCase();
 
         switch (subCommand) {
@@ -223,45 +224,96 @@ public class SWCommand implements CommandExecutor, TabCompleter {
             case "info":
             case "delete":
                 if (args.length == 3) {
-                    // 補全群組名稱
-                    List<WarpGroup> playerGroups = WarpGroup.getPlayerGroups(player.getUniqueId().toString());
-                    for (WarpGroup group : playerGroups) {
+                    // 補全群組名稱 - 根據權限顯示不同的群組
+                    List<WarpGroup> accessibleGroups;
+                    if (player.isOp() || player.hasPermission("signwarp.group.admin")) {
+                        // OP 和管理員可以看到所有群組
+                        accessibleGroups = WarpGroup.getAllGroups();
+                    } else {
+                        // 普通玩家只能看到自己的群組
+                        accessibleGroups = WarpGroup.getPlayerGroups(player.getUniqueId().toString());
+
+                        // 加入玩家有權限存取的群組（是成員的群組）
+                        List<WarpGroup> allGroups = WarpGroup.getAllGroups();
+                        for (WarpGroup group : allGroups) {
+                            if (WarpGroup.isPlayerInGroup(group.groupName(), player.getUniqueId().toString())
+                                    && !accessibleGroups.contains(group)) {
+                                accessibleGroups.add(group);
+                            }
+                        }
+                    }
+
+                    for (WarpGroup group : accessibleGroups) {
                         if (group.groupName().toLowerCase().startsWith(args[2].toLowerCase())) {
                             completions.add(group.groupName());
                         }
                     }
                 } else if (args.length == 4) {
-                    // 根據不同的子指令提供不同的補全
-                    switch (subCommand) {
-                        case "add":
-                        case "remove":
-                            // 補全傳送點名稱（只顯示玩家自己的私人傳送點）
-                            List<Warp> playerWarps = Warp.getPlayerWarps(player.getUniqueId().toString());
-                            for (Warp warp : playerWarps) {
-                                if (warp.isPrivate() &&
-                                        warp.getName().toLowerCase().startsWith(args[3].toLowerCase())) {
-                                    completions.add(warp.getName());
+                    // 第四個參數的補全
+                    String groupName = args[2];
+                    WarpGroup group = WarpGroup.getByName(groupName);
+
+                    if (group != null && hasGroupPermission(player, group, subCommand)) {
+                        switch (subCommand) {
+                            case "add":
+                                // 補全可加入的傳送點（玩家的私人傳送點，且不在任何群組中）
+                                List<Warp> playerWarps = Warp.getPlayerWarps(player.getUniqueId().toString());
+                                List<String> groupWarps = group.getGroupWarps();
+
+                                for (Warp warp : playerWarps) {
+                                    if (warp.isPrivate() &&
+                                            !isWarpInAnyGroup(warp.getName()) &&
+                                            warp.getName().toLowerCase().startsWith(args[3].toLowerCase())) {
+                                        completions.add(warp.getName());
+                                    }
                                 }
-                            }
-                            break;
-                        case "invite":
-                        case "uninvite":
-                            // 補全線上玩家名稱
-                            Bukkit.getOnlinePlayers().forEach(pl -> {
-                                if (!pl.equals(player) &&
-                                        pl.getName().toLowerCase().startsWith(args[3].toLowerCase())) {
-                                    completions.add(pl.getName());
+                                break;
+
+                            case "remove":
+                                // 補全群組中的傳送點
+                                List<String> warpsInGroup = group.getGroupWarps();
+                                for (String warpName : warpsInGroup) {
+                                    if (warpName.toLowerCase().startsWith(args[3].toLowerCase())) {
+                                        completions.add(warpName);
+                                    }
                                 }
-                            });
-                            break;
+                                break;
+
+                            case "invite":
+                            case "uninvite":
+                                // 補全線上玩家名稱
+                                Bukkit.getOnlinePlayers().forEach(pl -> {
+                                    if (!pl.equals(player) &&
+                                            pl.getName().toLowerCase().startsWith(args[3].toLowerCase())) {
+                                        completions.add(pl.getName());
+                                    }
+                                });
+                                break;
+                        }
                     }
                 } else if (args.length >= 5 && subCommand.equals("add")) {
-                    // 對於 add 指令的多個傳送點補全
-                    List<Warp> playerWarps = Warp.getPlayerWarps(player.getUniqueId().toString());
-                    for (Warp warp : playerWarps) {
-                        if (warp.isPrivate() &&
-                                warp.getName().toLowerCase().startsWith(args[args.length - 1].toLowerCase())) {
-                            completions.add(warp.getName());
+                    // 多個傳送點的補全
+                    String groupName = args[2];
+                    WarpGroup group = WarpGroup.getByName(groupName);
+
+                    if (group != null && hasGroupPermission(player, group, subCommand)) {
+                        List<Warp> playerWarps = Warp.getPlayerWarps(player.getUniqueId().toString());
+                        List<String> groupWarps = group.getGroupWarps();
+
+                        // 排除已經在參數中的傳送點
+                        List<String> alreadyAdded = new ArrayList<>();
+                        for (int i = 3; i < args.length - 1; i++) {
+                            alreadyAdded.add(args[i]);
+                        }
+
+                        for (Warp warp : playerWarps) {
+                            if (warp.isPrivate() &&
+                                    !groupWarps.contains(warp.getName()) &&
+                                    !alreadyAdded.contains(warp.getName()) &&
+                                    !isWarpInAnyGroup(warp.getName()) &&
+                                    warp.getName().toLowerCase().startsWith(args[args.length - 1].toLowerCase())) {
+                                completions.add(warp.getName());
+                            }
                         }
                     }
                 }
@@ -269,6 +321,66 @@ public class SWCommand implements CommandExecutor, TabCompleter {
         }
 
         return completions;
+    }
+
+    /**
+     * 檢查玩家是否有使用群組功能的權限（與 GroupCommand 中的邏輯一致）
+     */
+    private boolean canPlayerUseGroups(Player player) {
+        // OP 總是可以使用
+        if (player.isOp()) {
+            return true;
+        }
+
+        // 檢查管理員權限
+        if (player.hasPermission("signwarp.group.admin")) {
+            return true;
+        }
+
+        // 檢查配置是否允許普通玩家使用群組功能
+        boolean allowNormalPlayers = plugin.getConfig().getBoolean("warp-groups.allow-normal-players", true);
+        if (!allowNormalPlayers) {
+            return false;
+        }
+
+        // 檢查基本群組權限
+        return player.hasPermission("signwarp.group.create") || player.hasPermission("signwarp.use");
+    }
+
+    /**
+     * 檢查玩家是否有特定群組操作的權限
+     */
+    private boolean hasGroupPermission(Player player, WarpGroup group, String operation) {
+        // OP 和管理員擁有所有權限
+        if (player.isOp() || player.hasPermission("signwarp.group.admin")) {
+            return true;
+        }
+
+        // 檢查是否為群組擁有者
+        if (group.ownerUuid().equals(player.getUniqueId().toString())) {
+            return true;
+        }
+
+        // 對於某些操作，群組成員也有權限
+        switch (operation.toLowerCase()) {
+            case "info":
+                return WarpGroup.isPlayerInGroup(group.groupName(), player.getUniqueId().toString());
+            default:
+                return false; // 其他操作只有擁有者和管理員可以執行
+        }
+    }
+
+    /**
+     * 檢查傳送點是否已在任何群組中
+     */
+    private boolean isWarpInAnyGroup(String warpName) {
+        List<WarpGroup> allGroups = WarpGroup.getAllGroups();
+        for (WarpGroup group : allGroups) {
+            if (group.getGroupWarps().contains(warpName)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private List<String> getAccessibleWarps(Player player, String prefix) {
@@ -279,8 +391,6 @@ public class SWCommand implements CommandExecutor, TabCompleter {
                 .filter(n -> n.toLowerCase().startsWith(prefix.toLowerCase()))
                 .collect(Collectors.toList());
     }
-
-    // ... [保留所有其他現有的方法] ...
 
     private void handleGuiCommand(CommandSender sender) {
         if (sender instanceof Player player) {
