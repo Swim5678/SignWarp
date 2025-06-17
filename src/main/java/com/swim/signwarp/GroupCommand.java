@@ -22,6 +22,19 @@ public class GroupCommand {
             return true;
         }
 
+        // 首先檢查群組功能是否啟用
+        if (!isGroupFeatureEnabled()) {
+            String message = plugin.getConfig().getString("messages.group_feature_disabled", "&c群組功能目前已停用！");
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
+            return true;
+        }
+
+        if (!canPlayerUseGroups(player)) {
+            String message = plugin.getConfig().getString("messages.group_feature_no_permission", "&c您沒有權限使用群組功能！");
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
+            return true;
+        }
+
         if (args.length < 2) {
             sendGroupHelp(player);
             return true;
@@ -46,6 +59,37 @@ public class GroupCommand {
                 yield true;
             }
         };
+    }
+
+    /**
+     * 檢查群組功能是否啟用
+     */
+    private boolean isGroupFeatureEnabled() {
+        return plugin.getConfig().getBoolean("warp-groups.enabled", true);
+    }
+
+    /**
+     * 檢查玩家是否被允許使用群組功能
+     */
+    private boolean canPlayerUseGroups(Player player) {
+        // OP 總是可以使用
+        if (player.isOp()) {
+            return true;
+        }
+
+        // 檢查管理員權限
+        if (player.hasPermission("signwarp.group.admin")) {
+            return true;
+        }
+
+        // 檢查配置是否允許普通玩家使用群組功能
+        boolean allowNormalPlayers = plugin.getConfig().getBoolean("warp-groups.allow-normal-players", true);
+        if (!allowNormalPlayers) {
+            return false;
+        }
+
+        // 檢查基本群組權限
+        return player.hasPermission("signwarp.group.create") || player.hasPermission("signwarp.use");
     }
 
     /**
@@ -135,11 +179,6 @@ public class GroupCommand {
             return true;
         }
 
-        if (!player.hasPermission("signwarp.group.create") && !player.hasPermission("signwarp.use")) {
-            player.sendMessage(ChatColor.RED + "您沒有權限建立群組！");
-            return true;
-        }
-
         String groupName = args[2];
 
         // 檢查群組是否已存在
@@ -148,12 +187,15 @@ public class GroupCommand {
             return true;
         }
 
-        // 檢查玩家群組數量限制 - OP 不受限制
-        int maxGroups = plugin.getConfig().getInt("warp-groups.max-groups-per-player", 5);
-        List<WarpGroup> playerGroups = WarpGroup.getPlayerGroups(player.getUniqueId().toString());
-        if (playerGroups.size() >= maxGroups && !player.isOp() && !player.hasPermission("signwarp.group.admin")) {
-            player.sendMessage(plugin.getConfig().getString("messages.max_groups_reached", "&c您已達到群組建立上限！"));
-            return true;
+        // 檢查玩家群組數量限制 - OP 和管理員不受限制
+        if (!player.isOp() && !player.hasPermission("signwarp.group.admin")) {
+            int maxGroups = plugin.getConfig().getInt("warp-groups.max-groups-per-player", 5);
+            List<WarpGroup> playerGroups = WarpGroup.getPlayerGroups(player.getUniqueId().toString());
+            if (playerGroups.size() >= maxGroups) {
+                String message = plugin.getConfig().getString("messages.max_groups_reached", "&c您已達到群組建立上限！");
+                player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
+                return true;
+            }
         }
 
         // 建立群組
@@ -188,16 +230,19 @@ public class GroupCommand {
             return true;
         }
 
-        // 檢查群組中傳送點數量限制 - OP 不受限制
-        int maxWarpsPerGroup = plugin.getConfig().getInt("warp-groups.max-warps-per-group", 10);
+        // 檢查群組中傳送點數量限制 - OP 和管理員不受限制
         List<String> currentWarps = group.getGroupWarps();
+        int maxWarpsPerGroup = plugin.getConfig().getInt("warp-groups.max-warps-per-group", 10);
 
         for (int i = 3; i < args.length; i++) {
             String warpName = args[i];
 
-            if (currentWarps.size() >= maxWarpsPerGroup && !player.isOp() && !player.hasPermission("signwarp.group.admin")) {
-                player.sendMessage(ChatColor.RED + "群組傳送點數量已達上限！");
-                break;
+            // 檢查數量限制
+            if (!player.isOp() && !player.hasPermission("signwarp.group.admin")) {
+                if (currentWarps.size() >= maxWarpsPerGroup) {
+                    player.sendMessage(ChatColor.RED + "群組傳送點數量已達上限（" + maxWarpsPerGroup + "）！");
+                    break;
+                }
             }
 
             Warp warp = Warp.getByName(warpName);
@@ -212,8 +257,9 @@ public class GroupCommand {
                 continue;
             }
 
-            // OP 可以管理任何人的傳送點
-            if (!warp.getCreatorUuid().equals(player.getUniqueId().toString()) && !player.isOp() && !player.hasPermission("signwarp.group.admin")) {
+            // OP 和管理員可以管理任何人的傳送點
+            if (!warp.getCreatorUuid().equals(player.getUniqueId().toString()) &&
+                    !player.isOp() && !player.hasPermission("signwarp.group.admin")) {
                 player.sendMessage(ChatColor.RED + "您只能將自己的傳送點加入群組！");
                 continue;
             }
@@ -225,7 +271,10 @@ public class GroupCommand {
                 player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
                 currentWarps.add(warpName);
             } else {
-                player.sendMessage(ChatColor.RED + "無法將傳送點 '" + warpName + "' 加入群組！（可能已在其他群組中）");
+                String message = plugin.getConfig().getString("messages.warp_already_in_group",
+                        "&c傳送點 '{warp-name}' 已經在群組 '{existing-group}' 中。");
+                player.sendMessage(ChatColor.translateAlternateColorCodes('&',
+                        message.replace("{warp-name}", warpName)));
             }
         }
         return true;
@@ -297,12 +346,14 @@ public class GroupCommand {
             return true;
         }
 
-        // 檢查群組成員數量限制 - OP 不受限制
-        int maxMembersPerGroup = plugin.getConfig().getInt("warp-groups.max-members-per-group", 20);
-        List<WarpGroup.GroupMember> currentMembers = group.getGroupMembers();
-        if (currentMembers.size() >= maxMembersPerGroup && !player.isOp() && !player.hasPermission("signwarp.group.admin")) {
-            player.sendMessage(ChatColor.RED + "群組成員數量已達上限！");
-            return true;
+        // 檢查群組成員數量限制 - OP 和管理員不受限制
+        if (!player.isOp() && !player.hasPermission("signwarp.group.admin")) {
+            int maxMembersPerGroup = plugin.getConfig().getInt("warp-groups.max-members-per-group", 20);
+            List<WarpGroup.GroupMember> currentMembers = group.getGroupMembers();
+            if (currentMembers.size() >= maxMembersPerGroup) {
+                player.sendMessage(ChatColor.RED + "群組成員數量已達上限（" + maxMembersPerGroup + "）！");
+                return true;
+            }
         }
 
         if (group.invitePlayer(targetPlayer.getUniqueId().toString(), targetPlayer.getName())) {
@@ -449,14 +500,22 @@ public class GroupCommand {
     }
 
     private void sendGroupHelp(Player player) {
-        player.sendMessage(ChatColor.GREEN + "=== SignWarp 群組指令 ===");
-        player.sendMessage(ChatColor.AQUA + "/signwarp group create <群組名稱> - 建立新群組");
-        player.sendMessage(ChatColor.AQUA + "/signwarp group add <群組名稱> <傳送點名稱> - 將傳送點加入群組");
-        player.sendMessage(ChatColor.AQUA + "/signwarp group remove <群組名稱> <傳送點名稱> - 從群組中移除傳送點");
-        player.sendMessage(ChatColor.AQUA + "/signwarp group invite <群組名稱> <玩家名稱> - 邀請玩家加入群組");
-        player.sendMessage(ChatColor.AQUA + "/signwarp group uninvite <群組名稱> <玩家名稱> - 移除群組成員");
-        player.sendMessage(ChatColor.AQUA + "/signwarp group list - 列出自己擁有的群組");
-        player.sendMessage(ChatColor.AQUA + "/signwarp group info <群組名稱> - 顯示群組詳細資訊");
-        player.sendMessage(ChatColor.AQUA + "/signwarp group delete <群組名稱> - 刪除群組");
+        String header = plugin.getConfig().getString("messages.group_help_header", "&a=== SignWarp 群組指令說明 ===");
+        player.sendMessage(ChatColor.translateAlternateColorCodes('&', header));
+
+        String[] helpMessages = {
+                plugin.getConfig().getString("messages.group_help_create", "&b/wp group create <群組名稱> &7- 建立新群組"),
+                plugin.getConfig().getString("messages.group_help_list", "&b/wp group list &7- 查看您的群組列表"),
+                plugin.getConfig().getString("messages.group_help_info", "&b/wp group info <群組名稱> &7- 查看群組詳細資訊"),
+                plugin.getConfig().getString("messages.group_help_add", "&b/wp group add <群組名稱> <傳送點> &7- 將傳送點加入群組"),
+                plugin.getConfig().getString("messages.group_help_remove", "&b/wp group remove <群組名稱> <傳送點> &7- 從群組移除傳送點"),
+                plugin.getConfig().getString("messages.group_help_invite", "&b/wp group invite <群組名稱> <玩家> &7- 邀請玩家加入群組"),
+                plugin.getConfig().getString("messages.group_help_uninvite", "&b/wp group uninvite <群組名稱> <玩家> &7- 移除群組成員"),
+                plugin.getConfig().getString("messages.group_help_delete", "&b/wp group delete <群組名稱> &7- 刪除群組")
+        };
+
+        for (String message : helpMessages) {
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
+        }
     }
 }
