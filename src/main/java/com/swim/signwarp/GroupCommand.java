@@ -7,6 +7,7 @@ import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
 
 public class GroupCommand {
     private final SignWarp plugin;
@@ -46,6 +47,7 @@ public class GroupCommand {
             }
         };
     }
+
     /**
      * 清理所有群組中不存在的傳送點
      * 無論使用者是否有權限，都會執行此清理作業
@@ -79,10 +81,11 @@ public class GroupCommand {
                 }
             }
         } catch (Exception e) {
-            plugin.getLogger().severe("清理群組中無效傳送點時發生錯誤: " + e.getMessage());
-            e.printStackTrace();
+            plugin.getLogger().log(Level.SEVERE,
+                    "清理群組中無效傳送點時發生錯誤: " + e.getMessage(), e);
         }
     }
+
     /**
      * 檢查玩家是否有群組管理權限
      * OP 擁有所有群組的完整管理權限，不受任何限制

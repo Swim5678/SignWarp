@@ -39,80 +39,6 @@ public class Warp {
         this.isPrivate = isPrivate;
     }
 
-    public String getCreatorUuid() {
-        return creatorUuid;
-    }
-
-    public boolean isPrivate() {
-        return isPrivate;
-    }
-
-    public String getName() {
-        return warpName;
-    }
-
-    public Location getLocation() {
-        return location;
-    }
-
-    public String getFormattedCreatedAt() {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM/dd/yyyy | hh:mm:ss a");
-        LocalDateTime dateTime = LocalDateTime.parse(createdAt);
-        return dateTime.format(formatter);
-    }
-
-    // 新增 getter 取得 creator
-    public String getCreator() {
-        return creator;
-    }
-
-    public void save() {
-        try (Connection conn = DriverManager.getConnection(DB_URL)) {
-            String sql = "INSERT OR REPLACE INTO warps (name, world, x, y, z, yaw, pitch, created_at, creator, creator_uuid, is_private) " +
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, COALESCE((SELECT created_at FROM warps WHERE name = ?), ?), ?, ?, ?)";
-            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                pstmt.setString(1, warpName);
-                pstmt.setString(2, Objects.requireNonNull(location.getWorld()).getName());
-                pstmt.setDouble(3, location.getX());
-                pstmt.setDouble(4, location.getY());
-                pstmt.setDouble(5, location.getZ());
-                pstmt.setFloat(6, location.getYaw());
-                pstmt.setFloat(7, location.getPitch());
-                pstmt.setString(8, warpName);
-                pstmt.setString(9, createdAt);
-                pstmt.setString(10, creator);
-                pstmt.setString(11, creatorUuid);
-                pstmt.setInt(12, isPrivate ? 1 : 0); // 新增此行
-                pstmt.executeUpdate();
-            }
-        } catch (SQLException e) {
-            logger.severe("Failed to save warp '" + warpName + "': " + e.getMessage());
-            // For debugging, you might want to include the stack trace in log
-            logger.severe(() -> {
-                StringWriter sw = new StringWriter();
-                e.printStackTrace(new PrintWriter(sw));
-                return sw.toString();
-            });
-        }
-    }
-
-    public void remove() {
-        try (Connection conn = DriverManager.getConnection(DB_URL)) {
-            String sql = "DELETE FROM warps WHERE name = ?";
-            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                pstmt.setString(1, warpName);
-                pstmt.executeUpdate();
-            }
-        } catch (SQLException e) {
-            logger.severe("Failed to remove warp '" + warpName + "': " + e.getMessage());
-            if (logger.isLoggable(Level.FINE)) {
-                StringWriter sw = new StringWriter();
-                e.printStackTrace(new PrintWriter(sw));
-                logger.fine(sw.toString());
-            }
-        }
-    }
-
     /**
      * 修改 getByName()，多取得 creator 欄位
      */
@@ -317,6 +243,100 @@ public class Warp {
         }
     }
 
+    // 檢查玩家是否為包含指定傳送點的群組成員
+    private static boolean isPlayerInGroupWithWarp(String playerUuid, String warpName) {
+        try (Connection conn = DriverManager.getConnection(DB_URL)) {
+            String sql = "SELECT wgw.group_name FROM warp_group_warps wgw " +
+                    "WHERE wgw.warp_name = ? AND (" +
+                    "EXISTS (SELECT 1 FROM warp_groups wg WHERE wg.group_name = wgw.group_name AND wg.owner_uuid = ?) OR " +
+                    "EXISTS (SELECT 1 FROM warp_group_members wgm WHERE wgm.group_name = wgw.group_name AND wgm.member_uuid = ?)" +
+                    ")";
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setString(1, warpName);
+                pstmt.setString(2, playerUuid);
+                pstmt.setString(3, playerUuid);
+                return pstmt.executeQuery().next();
+            }
+        } catch (SQLException e) {
+            logger.severe("Failed to check if player is in group with warp: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public String getCreatorUuid() {
+        return creatorUuid;
+    }
+
+    public boolean isPrivate() {
+        return isPrivate;
+    }
+
+    public String getName() {
+        return warpName;
+    }
+
+    public Location getLocation() {
+        return location;
+    }
+
+    public String getFormattedCreatedAt() {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM/dd/yyyy | hh:mm:ss a");
+        LocalDateTime dateTime = LocalDateTime.parse(createdAt);
+        return dateTime.format(formatter);
+    }
+
+    // 新增 getter 取得 creator
+    public String getCreator() {
+        return creator;
+    }
+
+    public void save() {
+        try (Connection conn = DriverManager.getConnection(DB_URL)) {
+            String sql = "INSERT OR REPLACE INTO warps (name, world, x, y, z, yaw, pitch, created_at, creator, creator_uuid, is_private) " +
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, COALESCE((SELECT created_at FROM warps WHERE name = ?), ?), ?, ?, ?)";
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setString(1, warpName);
+                pstmt.setString(2, Objects.requireNonNull(location.getWorld()).getName());
+                pstmt.setDouble(3, location.getX());
+                pstmt.setDouble(4, location.getY());
+                pstmt.setDouble(5, location.getZ());
+                pstmt.setFloat(6, location.getYaw());
+                pstmt.setFloat(7, location.getPitch());
+                pstmt.setString(8, warpName);
+                pstmt.setString(9, createdAt);
+                pstmt.setString(10, creator);
+                pstmt.setString(11, creatorUuid);
+                pstmt.setInt(12, isPrivate ? 1 : 0); // 新增此行
+                pstmt.executeUpdate();
+            }
+        } catch (SQLException e) {
+            logger.severe("Failed to save warp '" + warpName + "': " + e.getMessage());
+            // For debugging, you might want to include the stack trace in log
+            logger.severe(() -> {
+                StringWriter sw = new StringWriter();
+                e.printStackTrace(new PrintWriter(sw));
+                return sw.toString();
+            });
+        }
+    }
+
+    public void remove() {
+        try (Connection conn = DriverManager.getConnection(DB_URL)) {
+            String sql = "DELETE FROM warps WHERE name = ?";
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setString(1, warpName);
+                pstmt.executeUpdate();
+            }
+        } catch (SQLException e) {
+            logger.severe("Failed to remove warp '" + warpName + "': " + e.getMessage());
+            if (logger.isLoggable(Level.FINE)) {
+                StringWriter sw = new StringWriter();
+                e.printStackTrace(new PrintWriter(sw));
+                logger.fine(sw.toString());
+            }
+        }
+    }
+
     // 新增邀請玩家方法
     public void invitePlayer(Player invitedPlayer) {
         try (Connection conn = DriverManager.getConnection(DB_URL)) {
@@ -385,6 +405,7 @@ public class Warp {
         }
         return invites;
     }
+
     // 在 Warp 類別中新增方法，檢查玩家是否可以使用傳送點（包含群組權限）
     public boolean canUseWarp(String playerUuid) {
         // 1. 檢查是否為公共傳送點
@@ -398,25 +419,5 @@ public class Warp {
 
         // 4. 檢查是否為包含此傳送點的群組成員
         return isPlayerInGroupWithWarp(playerUuid, warpName);
-    }
-
-    // 檢查玩家是否為包含指定傳送點的群組成員
-    private static boolean isPlayerInGroupWithWarp(String playerUuid, String warpName) {
-        try (Connection conn = DriverManager.getConnection(DB_URL)) {
-            String sql = "SELECT wgw.group_name FROM warp_group_warps wgw " +
-                    "WHERE wgw.warp_name = ? AND (" +
-                    "EXISTS (SELECT 1 FROM warp_groups wg WHERE wg.group_name = wgw.group_name AND wg.owner_uuid = ?) OR " +
-                    "EXISTS (SELECT 1 FROM warp_group_members wgm WHERE wgm.group_name = wgw.group_name AND wgm.member_uuid = ?)" +
-                    ")";
-            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                pstmt.setString(1, warpName);
-                pstmt.setString(2, playerUuid);
-                pstmt.setString(3, playerUuid);
-                return pstmt.executeQuery().next();
-            }
-        } catch (SQLException e) {
-            logger.severe("Failed to check if player is in group with warp: " + e.getMessage());
-            return false;
-        }
     }
 }

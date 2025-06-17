@@ -31,9 +31,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 
 public class EventListener implements Listener {
-    private final SignWarp plugin;
     private static FileConfiguration config;
-
+    private final SignWarp plugin;
     // 儲存傳送任務（排程）
     private final ConcurrentHashMap<UUID, BukkitTask> teleportTasks = new ConcurrentHashMap<>();
     // 傳送期間無敵玩家，避免在延遲中受傷
@@ -101,6 +100,7 @@ public class EventListener implements Listener {
             cooldowns.values().removeIf(cooldownEnd -> cooldownEnd <= now);
         }, 6000L, 6000L);  // 約每5分鐘執行一次 (20 tick * 60 sec * 5 = 6000 ticks)
     }
+
     /**
      * 檢查玩家是否可以創建新的傳送點
      */
@@ -454,8 +454,10 @@ public class EventListener implements Listener {
         // 呼叫傳送方法
         teleportPlayer(player, signData.warpName);
     }
+
     /**
      * 將世界名稱轉換為友善的中文顯示名稱
+     *
      * @param worldName 原始世界名稱
      * @return 轉換後的世界名稱
      */
@@ -483,8 +485,8 @@ public class EventListener implements Listener {
      * - 檢查跨次元傳送限制
      * - 設定傳送延遲、無敵狀態、牽引生物傳送及附帶特效（音效、粒子）。
      * - 若附近有符合條件的船隻，則採用改良邏輯：
-     *   先傳送點擊告示牌的玩家，再傳送該船，並將該船中所有非玩家乘客
-     *   臨時解除乘載關係後進行單獨傳送，待所有實體到達後再恢復載具關係。
+     * 先傳送點擊告示牌的玩家，再傳送該船，並將該船中所有非玩家乘客
+     * 臨時解除乘載關係後進行單獨傳送，待所有實體到達後再恢復載具關係。
      * - 傳送期間同時支持玩家騎乘馬匹，先傳送玩家，再傳送馬匹並復原騎乘狀態。
      * - 傳送結束後自動設定冷卻並清理相關記錄。
      *
@@ -666,10 +668,12 @@ public class EventListener implements Listener {
         }, teleportDelay * 20L); // 延遲時間轉為 tick
         teleportTasks.put(playerUUID, teleportTask);
     }
+
     /**
      * 檢查是否允許跨次元傳送
+     *
      * @param player 玩家
-     * @param warp 傳送點
+     * @param warp   傳送點
      * @return 是否允許傳送
      */
     private boolean canCrossDimensionTeleport(Player player, Warp warp) {
@@ -721,6 +725,7 @@ public class EventListener implements Listener {
 
     /**
      * 檢查兩個世界是否不同
+     *
      * @param world1 第一個世界
      * @param world2 第二個世界
      * @return 是否為不同世界
@@ -731,6 +736,7 @@ public class EventListener implements Listener {
         }
         return !world1.equals(world2);
     }
+
     private boolean canUseWarp(Player player, Warp warp) {
         // 管理員可以使用所有傳送點
         if (player.hasPermission("signwarp.admin")) {
@@ -750,6 +756,7 @@ public class EventListener implements Listener {
         // 檢查是否被邀請
         return warp.isPlayerInvited(player.getUniqueId().toString());
     }
+
     private void returnPendingItems(Player player) {
         UUID playerUUID = player.getUniqueId();
         if (pendingItemCosts.containsKey(playerUUID)) {

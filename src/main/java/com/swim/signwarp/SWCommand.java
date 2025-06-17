@@ -117,8 +117,7 @@ public class SWCommand implements CommandExecutor, TabCompleter {
                     completions.add(c);
                 }
             }
-        }
-        else if (args.length == 2) {
+        } else if (args.length == 2) {
             switch (args[0].toLowerCase()) {
                 case "group":
                     // 群組子指令補全
@@ -139,7 +138,7 @@ public class SWCommand implements CommandExecutor, TabCompleter {
                     }
                     break;
                 case "set":
-                    for (String v : new String[]{"公共","私人"}) {
+                    for (String v : new String[]{"公共", "私人"}) {
                         if (v.toLowerCase().startsWith(args[1].toLowerCase())) {
                             completions.add(v);
                         }
@@ -184,23 +183,19 @@ public class SWCommand implements CommandExecutor, TabCompleter {
                     }
                     break;
             }
-        }
-        else if (args.length == 3) {
+        } else if (args.length == 3) {
             if (args[0].equalsIgnoreCase("group")) {
                 return handleGroupTabCompletion(sender, args);
-            }
-            else if (args[0].equalsIgnoreCase("set")
+            } else if (args[0].equalsIgnoreCase("set")
                     || args[0].equalsIgnoreCase("invite")
                     || args[0].equalsIgnoreCase("uninvite")) {
                 if (sender instanceof Player pl) {
                     completions.addAll(getAccessibleWarps(pl, args[2]));
                 }
             }
-        }
-        else if (args.length == 4 && args[0].equalsIgnoreCase("group")) {
+        } else if (args.length == 4 && args[0].equalsIgnoreCase("group")) {
             return handleGroupTabCompletion(sender, args);
-        }
-        else if (args.length >= 4 && args[0].equalsIgnoreCase("group") && args[1].equalsIgnoreCase("add")) {
+        } else if (args.length >= 4 && args[0].equalsIgnoreCase("group") && args[1].equalsIgnoreCase("add")) {
             // 對於 /wp group add <群組名稱> <傳送點1> [傳送點2] ... 的多個傳送點補全
             return handleGroupTabCompletion(sender, args);
         }

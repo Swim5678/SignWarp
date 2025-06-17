@@ -13,6 +13,149 @@ public record WarpGroup(String groupName, String ownerUuid, String ownerName, St
     private static final String DB_URL = "jdbc:sqlite:" + JavaPlugin.getPlugin(SignWarp.class).getDataFolder() + File.separator + "warps.db";
     private static final Logger logger = JavaPlugin.getPlugin(SignWarp.class).getLogger();
 
+    // 靜態方法：根據名稱取得群組
+    public static WarpGroup getByName(String groupName) {
+        try (Connection conn = DriverManager.getConnection(DB_URL)) {
+            String sql = "SELECT * FROM warp_groups WHERE group_name = ?";
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setString(1, groupName);
+                ResultSet rs = pstmt.executeQuery();
+                if (rs.next()) {
+                    return new WarpGroup(
+                            rs.getString("group_name"),
+                            rs.getString("owner_uuid"),
+                            rs.getString("owner_name"),
+                            rs.getString("created_at")
+                    );
+                }
+            }
+        } catch (SQLException e) {
+            logger.severe("Failed to get warp group '" + groupName + "': " + e.getMessage());
+        }
+        return null;
+    }
+
+    // 靜態方法：取得玩家擁有的群組
+    public static List<WarpGroup> getPlayerGroups(String playerUuid) {
+        List<WarpGroup> groups = new ArrayList<>();
+        try (Connection conn = DriverManager.getConnection(DB_URL)) {
+            String sql = "SELECT * FROM warp_groups WHERE owner_uuid = ?";
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setString(1, playerUuid);
+                ResultSet rs = pstmt.executeQuery();
+                while (rs.next()) {
+                    groups.add(new WarpGroup(
+                            rs.getString("group_name"),
+                            rs.getString("owner_uuid"),
+                            rs.getString("owner_name"),
+                            rs.getString("created_at")
+                    ));
+                }
+            }
+        } catch (SQLException e) {
+            logger.severe("Failed to get player groups: " + e.getMessage());
+        }
+        return groups;
+    }
+
+    // 檢查玩家是否為群組成員（包含擁有者）
+    public static boolean isPlayerInGroup(String groupName, String playerUuid) {
+        try (Connection conn = DriverManager.getConnection(DB_URL)) {
+            // 檢查是否為擁有者
+            String ownerSql = "SELECT 1 FROM warp_groups WHERE group_name = ? AND owner_uuid = ?";
+            try (PreparedStatement pstmt = conn.prepareStatement(ownerSql)) {
+                pstmt.setString(1, groupName);
+                pstmt.setString(2, playerUuid);
+                if (pstmt.executeQuery().next()) return true;
+            }
+
+            // 檢查是否為成員
+            String memberSql = "SELECT 1 FROM warp_group_members WHERE group_name = ? AND member_uuid = ?";
+            try (PreparedStatement pstmt = conn.prepareStatement(memberSql)) {
+                pstmt.setString(1, groupName);
+                pstmt.setString(2, playerUuid);
+                return pstmt.executeQuery().next();
+            }
+        } catch (SQLException e) {
+            logger.severe("Failed to check if player is in group: " + e.getMessage());
+        }
+        return false;
+    }
+
+    // 檢查傳送點是否在任何群組中
+    private static boolean isWarpInAnyGroup(String warpName) {
+        try (Connection conn = DriverManager.getConnection(DB_URL)) {
+            String sql = "SELECT 1 FROM warp_group_warps WHERE warp_name = ?";
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setString(1, warpName);
+                return pstmt.executeQuery().next();
+            }
+        } catch (SQLException e) {
+            logger.severe("Failed to check if warp is in any group: " + e.getMessage());
+        }
+        return false;
+    }
+
+    // 靜態方法：建立資料表
+    public static void createTables() {
+        try (Connection conn = DriverManager.getConnection(DB_URL)) {
+            // 建立群組表
+            String groupTableSql = "CREATE TABLE IF NOT EXISTS warp_groups (" +
+                    "group_name TEXT PRIMARY KEY, " +
+                    "owner_uuid TEXT NOT NULL, " +
+                    "owner_name TEXT NOT NULL, " +
+                    "created_at TEXT NOT NULL" +
+                    ")";
+
+            // 建立群組成員表
+            String membersTableSql = "CREATE TABLE IF NOT EXISTS warp_group_members (" +
+                    "group_name TEXT, " +
+                    "member_uuid TEXT, " +
+                    "member_name TEXT, " +
+                    "invited_at TEXT, " +
+                    "PRIMARY KEY (group_name, member_uuid), " +
+                    "FOREIGN KEY (group_name) REFERENCES warp_groups(group_name) ON DELETE CASCADE" +
+                    ")";
+
+            // 建立群組傳送點關聯表
+            String warpsTableSql = "CREATE TABLE IF NOT EXISTS warp_group_warps (" +
+                    "group_name TEXT, " +
+                    "warp_name TEXT, " +
+                    "PRIMARY KEY (group_name, warp_name), " +
+                    "FOREIGN KEY (group_name) REFERENCES warp_groups(group_name) ON DELETE CASCADE, " +
+                    "FOREIGN KEY (warp_name) REFERENCES warps(name) ON DELETE CASCADE" +
+                    ")";
+
+            try (Statement stmt = conn.createStatement()) {
+                stmt.execute(groupTableSql);
+                stmt.execute(membersTableSql);
+                stmt.execute(warpsTableSql);
+            }
+        } catch (SQLException e) {
+            logger.severe("Failed to create warp group tables: " + e.getMessage());
+        }
+    }
+
+    public static List<WarpGroup> getAllGroups() {
+        List<WarpGroup> groups = new ArrayList<>();
+        try (Connection conn = DriverManager.getConnection(DB_URL)) {
+            String sql = "SELECT * FROM warp_groups";
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                ResultSet rs = pstmt.executeQuery();
+                while (rs.next()) {
+                    String groupName = rs.getString("group_name");
+                    String ownerUuid = rs.getString("owner_uuid");
+                    String ownerName = rs.getString("owner_name");
+                    String createdAt = rs.getString("created_at");
+                    groups.add(new WarpGroup(groupName, ownerUuid, ownerName, createdAt));
+                }
+            }
+        } catch (SQLException e) {
+            logger.severe("Failed to get all groups: " + e.getMessage());
+        }
+        return groups;
+    }
+
     // 儲存群組到資料庫
     public void save() {
         try (Connection conn = DriverManager.getConnection(DB_URL)) {
@@ -168,150 +311,7 @@ public record WarpGroup(String groupName, String ownerUuid, String ownerName, St
         return members;
     }
 
-    // 靜態方法：根據名稱取得群組
-    public static WarpGroup getByName(String groupName) {
-        try (Connection conn = DriverManager.getConnection(DB_URL)) {
-            String sql = "SELECT * FROM warp_groups WHERE group_name = ?";
-            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                pstmt.setString(1, groupName);
-                ResultSet rs = pstmt.executeQuery();
-                if (rs.next()) {
-                    return new WarpGroup(
-                            rs.getString("group_name"),
-                            rs.getString("owner_uuid"),
-                            rs.getString("owner_name"),
-                            rs.getString("created_at")
-                    );
-                }
-            }
-        } catch (SQLException e) {
-            logger.severe("Failed to get warp group '" + groupName + "': " + e.getMessage());
-        }
-        return null;
-    }
-
-    // 靜態方法：取得玩家擁有的群組
-    public static List<WarpGroup> getPlayerGroups(String playerUuid) {
-        List<WarpGroup> groups = new ArrayList<>();
-        try (Connection conn = DriverManager.getConnection(DB_URL)) {
-            String sql = "SELECT * FROM warp_groups WHERE owner_uuid = ?";
-            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                pstmt.setString(1, playerUuid);
-                ResultSet rs = pstmt.executeQuery();
-                while (rs.next()) {
-                    groups.add(new WarpGroup(
-                            rs.getString("group_name"),
-                            rs.getString("owner_uuid"),
-                            rs.getString("owner_name"),
-                            rs.getString("created_at")
-                    ));
-                }
-            }
-        } catch (SQLException e) {
-            logger.severe("Failed to get player groups: " + e.getMessage());
-        }
-        return groups;
-    }
-
-    // 檢查玩家是否為群組成員（包含擁有者）
-    public static boolean isPlayerInGroup(String groupName, String playerUuid) {
-        try (Connection conn = DriverManager.getConnection(DB_URL)) {
-            // 檢查是否為擁有者
-            String ownerSql = "SELECT 1 FROM warp_groups WHERE group_name = ? AND owner_uuid = ?";
-            try (PreparedStatement pstmt = conn.prepareStatement(ownerSql)) {
-                pstmt.setString(1, groupName);
-                pstmt.setString(2, playerUuid);
-                if (pstmt.executeQuery().next()) return true;
-            }
-
-            // 檢查是否為成員
-            String memberSql = "SELECT 1 FROM warp_group_members WHERE group_name = ? AND member_uuid = ?";
-            try (PreparedStatement pstmt = conn.prepareStatement(memberSql)) {
-                pstmt.setString(1, groupName);
-                pstmt.setString(2, playerUuid);
-                return pstmt.executeQuery().next();
-            }
-        } catch (SQLException e) {
-            logger.severe("Failed to check if player is in group: " + e.getMessage());
-        }
-        return false;
-    }
-
-    // 檢查傳送點是否在任何群組中
-    private static boolean isWarpInAnyGroup(String warpName) {
-        try (Connection conn = DriverManager.getConnection(DB_URL)) {
-            String sql = "SELECT 1 FROM warp_group_warps WHERE warp_name = ?";
-            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                pstmt.setString(1, warpName);
-                return pstmt.executeQuery().next();
-            }
-        } catch (SQLException e) {
-            logger.severe("Failed to check if warp is in any group: " + e.getMessage());
-        }
-        return false;
-    }
-
-    // 靜態方法：建立資料表
-    public static void createTables() {
-        try (Connection conn = DriverManager.getConnection(DB_URL)) {
-            // 建立群組表
-            String groupTableSql = "CREATE TABLE IF NOT EXISTS warp_groups (" +
-                    "group_name TEXT PRIMARY KEY, " +
-                    "owner_uuid TEXT NOT NULL, " +
-                    "owner_name TEXT NOT NULL, " +
-                    "created_at TEXT NOT NULL" +
-                    ")";
-
-            // 建立群組成員表
-            String membersTableSql = "CREATE TABLE IF NOT EXISTS warp_group_members (" +
-                    "group_name TEXT, " +
-                    "member_uuid TEXT, " +
-                    "member_name TEXT, " +
-                    "invited_at TEXT, " +
-                    "PRIMARY KEY (group_name, member_uuid), " +
-                    "FOREIGN KEY (group_name) REFERENCES warp_groups(group_name) ON DELETE CASCADE" +
-                    ")";
-
-            // 建立群組傳送點關聯表
-            String warpsTableSql = "CREATE TABLE IF NOT EXISTS warp_group_warps (" +
-                    "group_name TEXT, " +
-                    "warp_name TEXT, " +
-                    "PRIMARY KEY (group_name, warp_name), " +
-                    "FOREIGN KEY (group_name) REFERENCES warp_groups(group_name) ON DELETE CASCADE, " +
-                    "FOREIGN KEY (warp_name) REFERENCES warps(name) ON DELETE CASCADE" +
-                    ")";
-
-            try (Statement stmt = conn.createStatement()) {
-                stmt.execute(groupTableSql);
-                stmt.execute(membersTableSql);
-                stmt.execute(warpsTableSql);
-            }
-        } catch (SQLException e) {
-            logger.severe("Failed to create warp group tables: " + e.getMessage());
-        }
-    }
-
     // 內部類別：群組成員
-        public record GroupMember(String uuid, String name, String invitedAt) {
-    }
-
-    public static List<WarpGroup> getAllGroups() {
-        List<WarpGroup> groups = new ArrayList<>();
-        try (Connection conn = DriverManager.getConnection(DB_URL)) {
-            String sql = "SELECT * FROM warp_groups";
-            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                ResultSet rs = pstmt.executeQuery();
-                while (rs.next()) {
-                    String groupName = rs.getString("group_name");
-                    String ownerUuid = rs.getString("owner_uuid");
-                    String ownerName = rs.getString("owner_name");
-                    String createdAt = rs.getString("created_at");
-                    groups.add(new WarpGroup(groupName, ownerUuid, ownerName, createdAt));
-                }
-            }
-        } catch (SQLException e) {
-            logger.severe("Failed to get all groups: " + e.getMessage());
-        }
-        return groups;
+    public record GroupMember(String uuid, String name, String invitedAt) {
     }
 }
