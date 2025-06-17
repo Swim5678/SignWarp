@@ -16,6 +16,161 @@ public class GroupCommand {
         this.plugin = plugin;
     }
 
+    // === 提取的通用方法 ===
+
+    /**
+     * 統一的配置訊息發送方法
+     * 處理配置訊息的讀取、佔位符替換和顏色代碼轉換
+     */
+    private void sendConfigMessage(Player player, String configKey, String defaultMessage, String... placeholders) {
+        String message = plugin.getConfig().getString(configKey, defaultMessage);
+
+        // 替換佔位符 - 成對處理
+        for (int i = 0; i < placeholders.length; i += 2) {
+            if (i + 1 < placeholders.length) {
+                message = message.replace(placeholders[i], placeholders[i + 1]);
+            }
+        }
+
+        player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
+    }
+
+    /**
+     * 統一的群組驗證方法
+     * 檢查群組是否存在，不存在則發送錯誤訊息
+     */
+    private WarpGroup validateAndGetGroup(Player player, String groupName) {
+        WarpGroup group = WarpGroup.getByName(groupName);
+        if (group == null) {
+            sendConfigMessage(player, "messages.group_not_found", "&c找不到群組 '{group-name}'。",
+                    "{group-name}", groupName);
+        }
+        return group;
+    }
+
+    /**
+     * 統一的管理權限檢查方法
+     * 檢查玩家是否有群組管理權限，沒有則發送錯誤訊息
+     */
+    private boolean checkAndValidateAdminPermission(Player player, WarpGroup group) {
+        if (!hasGroupAdminPermission(player, group)) {
+            sendConfigMessage(player, "messages.not_group_owner", "&c您沒有權限管理此群組！");
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * 檢查是否為 OP 或群組管理員
+     */
+    private boolean isOpOrAdmin(Player player) {
+        return player.isOp() || player.hasPermission("signwarp.group.admin");
+    }
+
+    /**
+     * 統一的線上玩家驗證方法
+     * 檢查玩家是否在線，不在線則發送錯誤訊息
+     */
+    private Player validateOnlinePlayer(Player sender, String playerName) {
+        Player targetPlayer = Bukkit.getPlayer(playerName);
+        if (targetPlayer == null) {
+            sendConfigMessage(sender, "messages.player_not_online", "&c玩家 '{player}' 目前不在線上！請等待玩家上線後再進行操作。", "{player}", playerName);
+        }
+        return targetPlayer;
+    }
+
+    /**
+     * 檢查群組成員數量限制
+     */
+    private boolean checkMemberLimit(Player player, WarpGroup group) {
+        if (isOpOrAdmin(player)) {
+            return true; // OP 和管理員不受限制
+        }
+
+        int maxMembersPerGroup = plugin.getConfig().getInt("warp-groups.max-members-per-group", 20);
+        List<WarpGroup.GroupMember> currentMembers = group.getGroupMembers();
+
+        if (currentMembers.size() >= maxMembersPerGroup) {
+            player.sendMessage(ChatColor.RED + "群組成員數量已達上限（" + maxMembersPerGroup + "）！");
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * 檢查群組傳送點數量限制
+     */
+    private boolean checkWarpLimit(Player player, List<String> currentWarps) {
+        if (isOpOrAdmin(player)) {
+            return true; // OP 和管理員不受限制
+        }
+
+        int maxWarpsPerGroup = plugin.getConfig().getInt("warp-groups.max-warps-per-group", 10);
+        if (currentWarps.size() >= maxWarpsPerGroup) {
+            player.sendMessage(ChatColor.RED + "群組傳送點數量已達上限（" + maxWarpsPerGroup + "）！");
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * 處理單個傳送點的添加邏輯
+     */
+    private boolean processWarpAddition(Player player, WarpGroup group, String groupName,
+                                        String warpName, List<String> currentWarps) {
+        Warp warp = Warp.getByName(warpName);
+        if (warp == null) {
+            player.sendMessage(ChatColor.RED + "傳送點 '" + warpName + "' 不存在！");
+            return false;
+        }
+
+        if (!warp.isPrivate()) {
+            sendConfigMessage(player, "messages.warp_not_private", "&c只有私人傳送點才能加入群組！");
+            return false;
+        }
+
+        // OP 和管理員可以管理任何人的傳送點
+        if (!warp.getCreatorUuid().equals(player.getUniqueId().toString()) && !isOpOrAdmin(player)) {
+            player.sendMessage(ChatColor.RED + "您只能將自己的傳送點加入群組！");
+            return false;
+        }
+
+        if (group.addWarp(warpName)) {
+            sendConfigMessage(player, "messages.warp_added_to_group",
+                    "&a傳送點 '{warp-name}' 已加入群組 '{group-name}'。",
+                    "{warp-name}", warpName, "{group-name}", groupName);
+            currentWarps.add(warpName);
+            return true;
+        } else {
+            sendConfigMessage(player, "messages.warp_already_in_group",
+                    "&c傳送點 '{warp-name}' 已經在群組 '{existing-group}' 中。",
+                    "{warp-name}", warpName);
+            return false;
+        }
+    }
+
+    /**
+     * 顯示群組詳細資訊
+     */
+    private void displayGroupInfo(Player player, WarpGroup group, String groupName) {
+        player.sendMessage(ChatColor.GREEN + "=== 群組資訊: " + groupName + " ===");
+        player.sendMessage(ChatColor.AQUA + "擁有者: " + group.ownerName());
+
+        List<String> warps = group.getGroupWarps();
+        player.sendMessage(ChatColor.YELLOW + "傳送點 (" + warps.size() + "):");
+        for (String warp : warps) {
+            player.sendMessage(ChatColor.GRAY + "- " + warp);
+        }
+
+        List<WarpGroup.GroupMember> members = group.getGroupMembers();
+        player.sendMessage(ChatColor.LIGHT_PURPLE + "成員 (" + members.size() + "):");
+        for (WarpGroup.GroupMember member : members) {
+            player.sendMessage(ChatColor.GRAY + "- " + member.name());
+        }
+    }
+
+    // === 主要業務邏輯方法 ===
+
     public boolean handleGroupCommand(CommandSender sender, String[] args) {
         if (!(sender instanceof Player player)) {
             sender.sendMessage(ChatColor.RED + "此指令只能由玩家執行！");
@@ -24,14 +179,12 @@ public class GroupCommand {
 
         // 首先檢查群組功能是否啟用
         if (!isGroupFeatureEnabled()) {
-            String message = plugin.getConfig().getString("messages.group_feature_disabled", "&c群組功能目前已停用！");
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
+            sendConfigMessage(player, "messages.group_feature_disabled", "&c群組功能目前已停用！");
             return true;
         }
 
         if (!canPlayerUseGroups(player)) {
-            String message = plugin.getConfig().getString("messages.group_feature_no_permission", "&c您沒有權限使用群組功能！");
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
+            sendConfigMessage(player, "messages.group_feature_no_permission", "&c您沒有權限使用群組功能！");
             return true;
         }
 
@@ -183,12 +336,11 @@ public class GroupCommand {
         }
 
         // 檢查玩家群組數量限制 - OP 和管理員不受限制
-        if (!player.isOp() && !player.hasPermission("signwarp.group.admin")) {
+        if (!isOpOrAdmin(player)) {
             int maxGroups = plugin.getConfig().getInt("warp-groups.max-groups-per-player", 5);
             List<WarpGroup> playerGroups = WarpGroup.getPlayerGroups(player.getUniqueId().toString());
             if (playerGroups.size() >= maxGroups) {
-                String message = plugin.getConfig().getString("messages.max_groups_reached", "&c您已達到群組建立上限！");
-                player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
+                sendConfigMessage(player, "messages.max_groups_reached", "&c您已達到群組建立上限！");
                 return true;
             }
         }
@@ -198,8 +350,8 @@ public class GroupCommand {
                 java.time.LocalDateTime.now().toString());
         group.save();
 
-        String message = plugin.getConfig().getString("messages.group_created", "&a成功建立群組 '{group-name}'！");
-        player.sendMessage(ChatColor.translateAlternateColorCodes('&', message.replace("{group-name}", groupName)));
+        sendConfigMessage(player, "messages.group_created", "&a成功建立群組 '{group-name}'！",
+                "{group-name}", groupName);
         return true;
     }
 
@@ -210,67 +362,23 @@ public class GroupCommand {
         }
 
         String groupName = args[2];
-        WarpGroup group = WarpGroup.getByName(groupName);
+        WarpGroup group = validateAndGetGroup(player, groupName);
+        if (group == null) return true;
 
-        if (group == null) {
-            String message = plugin.getConfig().getString("messages.group_not_found", "&c找不到群組 '{group-name}'。");
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', message.replace("{group-name}", groupName)));
-            return true;
-        }
+        if (!checkAndValidateAdminPermission(player, group)) return true;
 
-        // 使用統一的權限檢查方法
-        if (!hasGroupAdminPermission(player, group)) {
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&',
-                    plugin.getConfig().getString("messages.not_group_owner", "&c您沒有權限管理此群組！")));
-            return true;
-        }
-
-        // 檢查群組中傳送點數量限制 - OP 和管理員不受限制
+        // 檢查群組中傳送點數量限制
         List<String> currentWarps = group.getGroupWarps();
-        int maxWarpsPerGroup = plugin.getConfig().getInt("warp-groups.max-warps-per-group", 10);
 
         for (int i = 3; i < args.length; i++) {
             String warpName = args[i];
 
             // 檢查數量限制
-            if (!player.isOp() && !player.hasPermission("signwarp.group.admin")) {
-                if (currentWarps.size() >= maxWarpsPerGroup) {
-                    player.sendMessage(ChatColor.RED + "群組傳送點數量已達上限（" + maxWarpsPerGroup + "）！");
-                    break;
-                }
+            if (!checkWarpLimit(player, currentWarps)) {
+                break;
             }
 
-            Warp warp = Warp.getByName(warpName);
-            if (warp == null) {
-                player.sendMessage(ChatColor.RED + "傳送點 '" + warpName + "' 不存在！");
-                continue;
-            }
-
-            if (!warp.isPrivate()) {
-                String message = plugin.getConfig().getString("messages.warp_not_private", "&c只有私人傳送點才能加入群組！");
-                player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
-                continue;
-            }
-
-            // OP 和管理員可以管理任何人的傳送點
-            if (!warp.getCreatorUuid().equals(player.getUniqueId().toString()) &&
-                    !player.isOp() && !player.hasPermission("signwarp.group.admin")) {
-                player.sendMessage(ChatColor.RED + "您只能將自己的傳送點加入群組！");
-                continue;
-            }
-
-            if (group.addWarp(warpName)) {
-                String message = plugin.getConfig().getString("messages.warp_added_to_group",
-                        "&a傳送點 '{warp-name}' 已加入群組 '{group-name}'。");
-                message = message.replace("{warp-name}", warpName).replace("{group-name}", groupName);
-                player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
-                currentWarps.add(warpName);
-            } else {
-                String message = plugin.getConfig().getString("messages.warp_already_in_group",
-                        "&c傳送點 '{warp-name}' 已經在群組 '{existing-group}' 中。");
-                player.sendMessage(ChatColor.translateAlternateColorCodes('&',
-                        message.replace("{warp-name}", warpName)));
-            }
+            processWarpAddition(player, group, groupName, warpName, currentWarps);
         }
         return true;
     }
@@ -284,25 +392,15 @@ public class GroupCommand {
         String groupName = args[2];
         String warpName = args[3];
 
-        WarpGroup group = WarpGroup.getByName(groupName);
-        if (group == null) {
-            String message = plugin.getConfig().getString("messages.group_not_found", "&c找不到群組 '{group-name}'。");
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', message.replace("{group-name}", groupName)));
-            return true;
-        }
+        WarpGroup group = validateAndGetGroup(player, groupName);
+        if (group == null) return true;
 
-        // 使用統一的權限檢查方法
-        if (!hasGroupAdminPermission(player, group)) {
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&',
-                    plugin.getConfig().getString("messages.not_group_owner", "&c您沒有權限管理此群組！")));
-            return true;
-        }
+        if (!checkAndValidateAdminPermission(player, group)) return true;
 
         if (group.removeWarp(warpName)) {
-            String message = plugin.getConfig().getString("messages.warp_removed_from_group",
-                    "&a傳送點 '{warp-name}' 已從群組 '{group-name}' 中移除。");
-            message = message.replace("{warp-name}", warpName).replace("{group-name}", groupName);
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
+            sendConfigMessage(player, "messages.warp_removed_from_group",
+                    "&a傳送點 '{warp-name}' 已從群組 '{group-name}' 中移除。",
+                    "{warp-name}", warpName, "{group-name}", groupName);
         } else {
             player.sendMessage(ChatColor.RED + "無法從群組中移除傳送點 '" + warpName + "'！");
         }
@@ -318,45 +416,22 @@ public class GroupCommand {
         String groupName = args[2];
         String targetPlayerName = args[3];
 
-        WarpGroup group = WarpGroup.getByName(groupName);
-        if (group == null) {
-            String message = plugin.getConfig().getString("messages.group_not_found", "&c找不到群組 '{group-name}'。");
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', message.replace("{group-name}", groupName)));
-            return true;
-        }
+        WarpGroup group = validateAndGetGroup(player, groupName);
+        if (group == null) return true;
 
-        // 使用統一的權限檢查方法
-        if (!hasGroupAdminPermission(player, group)) {
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&',
-                    plugin.getConfig().getString("messages.not_group_owner", "&c您沒有權限管理此群組！")));
-            return true;
-        }
+        if (!checkAndValidateAdminPermission(player, group)) return true;
 
-        Player targetPlayer = Bukkit.getPlayer(targetPlayerName);
-        if (targetPlayer == null) {
-            String message = plugin.getConfig().getString("messages.player_not_online",
-                    "&c玩家 '{player}' 目前不在線上！請等待玩家上線後再進行操作。");
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&',
-                    message.replace("{player}", targetPlayerName)));
-            return true;
-        }
+        Player targetPlayer = validateOnlinePlayer(player, targetPlayerName
+        );
+        if (targetPlayer == null) return true;
 
-        // 檢查群組成員數量限制 - OP 和管理員不受限制
-        if (!player.isOp() && !player.hasPermission("signwarp.group.admin")) {
-            int maxMembersPerGroup = plugin.getConfig().getInt("warp-groups.max-members-per-group", 20);
-            List<WarpGroup.GroupMember> currentMembers = group.getGroupMembers();
-            if (currentMembers.size() >= maxMembersPerGroup) {
-                player.sendMessage(ChatColor.RED + "群組成員數量已達上限（" + maxMembersPerGroup + "）！");
-                return true;
-            }
-        }
+        // 檢查群組成員數量限制
+        if (!checkMemberLimit(player, group)) return true;
 
         if (group.invitePlayer(targetPlayer.getUniqueId().toString(), targetPlayer.getName())) {
-            String message = plugin.getConfig().getString("messages.player_invited_to_group",
-                    "&a玩家 '{player}' 已被邀請加入群組 '{group-name}'。");
-            message = message.replace("{player}", targetPlayerName).replace("{group-name}", groupName);
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
-
+            sendConfigMessage(player, "messages.player_invited_to_group",
+                    "&a玩家 '{player}' 已被邀請加入群組 '{group-name}'。",
+                    "{player}", targetPlayerName, "{group-name}", groupName);
             targetPlayer.sendMessage(ChatColor.GREEN + "您已被邀請加入群組 '" + groupName + "'！");
         } else {
             player.sendMessage(ChatColor.RED + "無法邀請玩家！（可能已經是群組成員）");
@@ -373,34 +448,22 @@ public class GroupCommand {
         String groupName = args[2];
         String targetPlayerName = args[3];
 
-        WarpGroup group = WarpGroup.getByName(groupName);
-        if (group == null) {
-            String message = plugin.getConfig().getString("messages.group_not_found", "&c找不到群組 '{group-name}'。");
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', message.replace("{group-name}", groupName)));
-            return true;
-        }
+        WarpGroup group = validateAndGetGroup(player, groupName);
+        if (group == null) return true;
 
-        // 使用統一的權限檢查方法
-        if (!hasGroupAdminPermission(player, group)) {
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&',
-                    plugin.getConfig().getString("messages.not_group_owner", "&c您沒有權限管理此群組！")));
-            return true;
-        }
+        if (!checkAndValidateAdminPermission(player, group)) return true;
 
         // 只允許移除在線玩家，確保即時通知
-        Player targetPlayer = Bukkit.getPlayer(targetPlayerName);
-        if (targetPlayer == null) {
-            player.sendMessage(ChatColor.RED + "玩家 '" + targetPlayerName + "' 目前不在線上！請等待玩家上線後再進行操作。");
-            return true;
-        }
+        Player targetPlayer = validateOnlinePlayer(player, targetPlayerName
+        );
+        if (targetPlayer == null) return true;
 
         String targetUuid = targetPlayer.getUniqueId().toString();
 
         if (group.removeMember(targetUuid)) {
-            String message = plugin.getConfig().getString("messages.player_removed_from_group",
-                    "&a玩家 '{player}' 已從群組 '{group-name}' 中移除。");
-            message = message.replace("{player}", targetPlayerName).replace("{group-name}", groupName);
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
+            sendConfigMessage(player, "messages.player_removed_from_group",
+                    "&a玩家 '{player}' 已從群組 '{group-name}' 中移除。",
+                    "{player}", targetPlayerName, "{group-name}", groupName);
 
             // 即時通知被移除的玩家
             targetPlayer.sendMessage(ChatColor.YELLOW + "您已被從群組 '" + groupName + "' 中移除。");
@@ -435,34 +498,15 @@ public class GroupCommand {
         }
 
         String groupName = args[2];
-        WarpGroup group = WarpGroup.getByName(groupName);
+        WarpGroup group = validateAndGetGroup(player, groupName);
+        if (group == null) return true;
 
-        if (group == null) {
-            String message = plugin.getConfig().getString("messages.group_not_found", "&c找不到群組 '{group-name}'。");
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', message.replace("{group-name}", groupName)));
-            return true;
-        }
-
-        // 使用統一的權限檢查方法
         if (!hasGroupViewPermission(player, group, groupName)) {
             player.sendMessage(ChatColor.RED + "您沒有權限查看此群組資訊！");
             return true;
         }
 
-        player.sendMessage(ChatColor.GREEN + "=== 群組資訊: " + groupName + " ===");
-        player.sendMessage(ChatColor.AQUA + "擁有者: " + group.ownerName());
-
-        List<String> warps = group.getGroupWarps();
-        player.sendMessage(ChatColor.YELLOW + "傳送點 (" + warps.size() + "):");
-        for (String warp : warps) {
-            player.sendMessage(ChatColor.GRAY + "- " + warp);
-        }
-
-        List<WarpGroup.GroupMember> members = group.getGroupMembers();
-        player.sendMessage(ChatColor.LIGHT_PURPLE + "成員 (" + members.size() + "):");
-        for (WarpGroup.GroupMember member : members) {
-            player.sendMessage(ChatColor.GRAY + "- " + member.name());
-        }
+        displayGroupInfo(player, group, groupName);
         return true;
     }
 
@@ -473,24 +517,14 @@ public class GroupCommand {
         }
 
         String groupName = args[2];
-        WarpGroup group = WarpGroup.getByName(groupName);
+        WarpGroup group = validateAndGetGroup(player, groupName);
+        if (group == null) return true;
 
-        if (group == null) {
-            String message = plugin.getConfig().getString("messages.group_not_found", "&c找不到群組 '{group-name}'。");
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', message.replace("{group-name}", groupName)));
-            return true;
-        }
-
-        // 使用統一的權限檢查方法
-        if (!hasGroupAdminPermission(player, group)) {
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&',
-                    plugin.getConfig().getString("messages.not_group_owner", "&c您沒有權限管理此群組！")));
-            return true;
-        }
+        if (!checkAndValidateAdminPermission(player, group)) return true;
 
         group.delete();
-        String message = plugin.getConfig().getString("messages.group_deleted", "&a群組 '{group-name}' 已刪除。");
-        player.sendMessage(ChatColor.translateAlternateColorCodes('&', message.replace("{group-name}", groupName)));
+        sendConfigMessage(player, "messages.group_deleted", "&a群組 '{group-name}' 已刪除。",
+                "{group-name}", groupName);
         return true;
     }
 
