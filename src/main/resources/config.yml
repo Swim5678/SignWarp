@@ -132,3 +132,8 @@ messages:
   group_help_invite: "&b/wp group invite <群組名稱> <玩家> &7- 邀請玩家加入群組"
   group_help_uninvite: "&b/wp group uninvite <群組名稱> <玩家> &7- 移除群組成員"
   group_help_delete: "&b/wp group delete <群組名稱> &7- 刪除群組"
+
+  # TP 指令相關訊息
+  tp_op_only: "&c權限不足"
+  tp_usage: "&e用法: /signwarp tp <傳送點名稱>"
+  tp_success: "&a已傳送到: {warp-name} (建立者: {creator})"

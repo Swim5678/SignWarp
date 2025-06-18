@@ -328,7 +328,11 @@ public class GroupCommand {
         }
 
         String groupName = args[2];
-
+        //名稱長度限制，最多 8 個字
+        if (groupName.codePointCount(0, groupName.length()) > 8) {
+            player.sendMessage(ChatColor.RED + "群組名稱最多 8 個字！");
+            return true;
+        }
         // 檢查群組是否已存在
         if (WarpGroup.getByName(groupName) != null) {
             player.sendMessage(ChatColor.RED + "群組 '" + groupName + "' 已經存在！");

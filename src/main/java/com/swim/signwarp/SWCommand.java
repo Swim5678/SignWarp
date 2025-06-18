@@ -155,11 +155,12 @@ public class SWCommand implements CommandExecutor, TabCompleter {
                     }
                     break;
                 case "tp":
-                    // 列出所有 Warp 名稱給 OP 補全
-                    Warp.getAll().stream()
-                            .map(Warp::getName)
-                            .filter(n -> n.toLowerCase().startsWith(args[1].toLowerCase()))
-                            .forEach(completions::add);
+                    if (sender instanceof Player p && p.isOp()) {
+                        Warp.getAll().stream()
+                                .map(Warp::getName)
+                                .filter(n -> n.toLowerCase().startsWith(args[1].toLowerCase()))
+                                .forEach(completions::add);
+                    }
                     break;
                 case "list-own":
                     // 只有 OP 或管理員可以查看其他玩家的傳送點
@@ -738,22 +739,32 @@ public class SWCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         if (!player.isOp()) {
-            player.sendMessage(ChatColor.RED + "只有伺服器 OP 可以使用此指令。");
+            String msg = plugin.getConfig().getString("messages.tp_op_only",
+                    "&c只有伺服器 OP 可以使用此指令。");
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&', msg));
             return true;
         }
         if (args.length < 2) {
-            player.sendMessage(ChatColor.YELLOW + "用法: /signwarp tp <傳送點名稱>");
+            String msg = plugin.getConfig().getString("messages.tp_usage",
+                    "&e用法: /signwarp tp <傳送點名稱>");
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&', msg));
             return true;
         }
         String warpName = args[1];
         Warp warp = Warp.getByName(warpName);
         if (warp == null) {
-            player.sendMessage(ChatColor.RED + "找不到傳送點: " + warpName);
+            String msg = plugin.getConfig().getString("messages.warp_not_found",
+                            "&c找不到傳送點: {warp-name}")
+                    .replace("{warp-name}", warpName);
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&', msg));
             return true;
         }
         player.teleport(warp.getLocation());
-        player.sendMessage(ChatColor.GREEN + "已傳送到: " + warp.getName() +
-                " (建立者: " + warp.getCreator() + ")");
+        String msg = plugin.getConfig().getString("messages.tp_success",
+                        "&a已傳送到: {warp-name} (建立者: {creator})")
+                .replace("{warp-name}", warp.getName())
+                .replace("{creator}", warp.getCreator());
+        player.sendMessage(ChatColor.translateAlternateColorCodes('&', msg));
         return true;
     }
 }
