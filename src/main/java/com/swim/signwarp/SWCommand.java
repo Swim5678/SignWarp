@@ -48,7 +48,6 @@ public class SWCommand implements CommandExecutor, TabCompleter {
                              @NotNull String label,
                              String[] args) {
         if (args.length == 0) {
-            sender.sendMessage("Usage: /signwarp <gui/reload/set/invite/uninvite/list-invites/list-own/tp/group>");
             return true;
         }
 
@@ -98,8 +97,6 @@ public class SWCommand implements CommandExecutor, TabCompleter {
         if (args[0].equalsIgnoreCase("tp")) {
             return handleWptCommand(sender, args);
         }
-
-        sender.sendMessage("Unknown subcommand. Usage: /signwarp <gui/reload/set/invite/uninvite/list-invites/list/tp/group>");
         return true;
     }
 
