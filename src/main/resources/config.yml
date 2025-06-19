@@ -2,7 +2,7 @@
 use-item: ENDER_PEARL
 # 使用傳送標誌時消耗的物品數量
 use-cost: 1
-# 傳送前的冷卻時間（單位：秒）
+# 傳送前的等待時間（單位：秒）
 teleport-delay: 5
 # 設置傳送完成後的冷卻（單位：秒）
 teleport-use-cooldown: 10
