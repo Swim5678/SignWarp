@@ -1,6 +1,9 @@
 package com.swim.signwarp;
 
 import com.swim.signwarp.utils.SignUtils;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
@@ -33,6 +36,8 @@ import java.util.logging.Level;
 public class EventListener implements Listener {
     private static FileConfiguration config;
     private final SignWarp plugin;
+    private final MiniMessage miniMessage = MiniMessage.miniMessage();
+
     // 儲存傳送任務（排程）
     private final ConcurrentHashMap<UUID, BukkitTask> teleportTasks = new ConcurrentHashMap<>();
     // 暫存扣除的物品數量（用於傳送取消時返還）
@@ -164,7 +169,7 @@ public class EventListener implements Listener {
 
         // 檢查依附的方塊是否是受重力影響的：
         if (isGravityAffected(supportType)) {
-            String msg = ChatColor.RED + "無法建立在沙子、礫石等重力方塊上！";
+            Component msg = Component.text("無法建立在沙子、礫石等重力方塊上！", NamedTextColor.RED);
             player.sendMessage(msg);
             event.setCancelled(true);
             return;
@@ -174,7 +179,7 @@ public class EventListener implements Listener {
         if (!player.hasPermission("signwarp.create")) {
             String noPermissionMessage = config.getString("messages.create_permission");
             if (noPermissionMessage != null) {
-                player.sendMessage(ChatColor.translateAlternateColorCodes('&', noPermissionMessage));
+                player.sendMessage(miniMessage.deserialize(noPermissionMessage));
             }
             event.setCancelled(true);
             return;
@@ -184,7 +189,7 @@ public class EventListener implements Listener {
         if (!signData.isValidWarpName()) {
             String noWarpNameMessage = config.getString("messages.no_warp_name");
             if (noWarpNameMessage != null) {
-                player.sendMessage(ChatColor.translateAlternateColorCodes('&', noWarpNameMessage));
+                player.sendMessage(miniMessage.deserialize(noWarpNameMessage));
             }
             event.setCancelled(true);
             return;
@@ -198,15 +203,15 @@ public class EventListener implements Listener {
             if (existingWarp == null) {
                 String warpNotFoundMessage = config.getString("messages.warp_not_found");
                 if (warpNotFoundMessage != null) {
-                    player.sendMessage(ChatColor.translateAlternateColorCodes('&', warpNotFoundMessage));
+                    player.sendMessage(miniMessage.deserialize(warpNotFoundMessage));
                 }
                 event.setCancelled(true);
                 return;
             }
-            event.setLine(0, ChatColor.BLUE + SignData.HEADER_WARP);
+            event.line(0, Component.text(SignData.HEADER_WARP).color(NamedTextColor.BLUE));
             String warpCreatedMessage = config.getString("messages.warp_created");
             if (warpCreatedMessage != null) {
-                player.sendMessage(ChatColor.translateAlternateColorCodes('&', warpCreatedMessage));
+                player.sendMessage(miniMessage.deserialize(warpCreatedMessage));
             }
         }
         // 處理 WPT 標識牌：創建新的傳送目標（需要收取物品）
@@ -215,7 +220,7 @@ public class EventListener implements Listener {
             if (existingWarp != null) {
                 String warpNameTakenMessage = config.getString("messages.warp_name_taken");
                 if (warpNameTakenMessage != null) {
-                    player.sendMessage(ChatColor.translateAlternateColorCodes('&', warpNameTakenMessage));
+                    player.sendMessage(miniMessage.deserialize(warpNameTakenMessage));
                 }
                 event.setCancelled(true);
                 return;
@@ -227,13 +232,13 @@ public class EventListener implements Listener {
                 String limitMessage = config.getString("messages.warp_limit_reached", "&c您已達到最大傳送點創建數量限制 ({current}/{max})！");
                 limitMessage = limitMessage.replace("{current}", String.valueOf(currentWarps))
                         .replace("{max}", String.valueOf(maxWarps));
-                player.sendMessage(ChatColor.translateAlternateColorCodes('&', limitMessage));
+                player.sendMessage(miniMessage.deserialize(limitMessage));
                 event.setCancelled(true);
                 return;
             }
             // 當配置中設定無效時，不允許建立傳送目標
             if (!validCreateWPTItem) {
-                player.sendMessage(ChatColor.RED + "建立傳送目標功能暫停，請聯繫管理員。");
+                player.sendMessage(Component.text("建立傳送目標功能暫停，請聯繫管理員。", NamedTextColor.RED));
                 event.setCancelled(true);
                 return;
             }
@@ -243,7 +248,7 @@ public class EventListener implements Listener {
             if (!"none".equalsIgnoreCase(createWPTItem)) {
                 Material material = Material.getMaterial(createWPTItem.toUpperCase());
                 if (material == null) {
-                    player.sendMessage(ChatColor.RED + "配置中指定的物品無效，無法建立傳送目標。");
+                    player.sendMessage(Component.text("配置中指定的物品無效，無法建立傳送目標。", NamedTextColor.RED));
                     event.setCancelled(true);
                     return;
                 }
@@ -252,7 +257,7 @@ public class EventListener implements Listener {
                 if (itemInHand.getType() != material || itemInHand.getAmount() < createWPTItemCost) {
                     String notEnoughMessage = config.getString("messages.not_enough_item");
                     if (notEnoughMessage != null) {
-                        player.sendMessage(ChatColor.translateAlternateColorCodes('&',
+                        player.sendMessage(miniMessage.deserialize(
                                 notEnoughMessage.replace("{use-cost}", String.valueOf(createWPTItemCost))
                                         .replace("{use-item}", createWPTItem)));
                     }
@@ -274,18 +279,18 @@ public class EventListener implements Listener {
             Warp warp = new Warp(signData.warpName, player.getLocation(), currentDateTime,
                     player.getName(), player.getUniqueId().toString(), defaultVisibility);
             warp.save();
-            event.setLine(0, ChatColor.BLUE + SignData.HEADER_TARGET);
+            event.line(0, Component.text(SignData.HEADER_WARP).color(NamedTextColor.BLUE));
             boolean showCreatorOnSign = config.getBoolean("show-creator-on-sign", true);
             if (showCreatorOnSign) {
                 // 從配置中獲取建立者顯示格式，如果沒有則使用預設格式
                 String creatorDisplayFormat = config.getString("messages.creator-display-format", "&7建立者: &f{creator}");
-                String formattedCreatorInfo = ChatColor.translateAlternateColorCodes('&',
-                        creatorDisplayFormat.replace("{creator}", player.getName()));
-                event.setLine(2, formattedCreatorInfo);
+                String formattedCreatorInfo = creatorDisplayFormat.replace("{creator}", player.getName());
+                // 由於標誌牌不支援 Adventure API，這裡使用舊的顏色代碼
+                event.setLine(2, formattedCreatorInfo.replace('&', '§'));
             }
             String targetSignCreatedMessage = config.getString("messages.target_sign_created");
             if (targetSignCreatedMessage != null) {
-                player.sendMessage(ChatColor.translateAlternateColorCodes('&', targetSignCreatedMessage));
+                player.sendMessage(miniMessage.deserialize(targetSignCreatedMessage));
             }
         }
     }
@@ -330,7 +335,7 @@ public class EventListener implements Listener {
         if (!hasPermission) {
             String noPermissionMessage = config.getString("messages.destroy_permission");
             if (noPermissionMessage != null) {
-                player.sendMessage(ChatColor.translateAlternateColorCodes('&', noPermissionMessage));
+                player.sendMessage(miniMessage.deserialize(noPermissionMessage));
             }
             event.setCancelled(true);
             return;
@@ -340,7 +345,7 @@ public class EventListener implements Listener {
         warp.remove();
         String destroyedMsg = config.getString("messages.warp_destroyed");
         if (destroyedMsg != null) {
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', destroyedMsg));
+            player.sendMessage(miniMessage.deserialize(destroyedMsg));
         }
     }
 
@@ -381,7 +386,7 @@ public class EventListener implements Listener {
                 // 從配置檔獲取錯誤訊息
                 String privateWarpMessage = config.getString("messages.private_warp",
                         "&c這是一個私人傳送點，只有創建者、被邀請的玩家和群組成員可以使用。");
-                player.sendMessage(ChatColor.translateAlternateColorCodes('&', privateWarpMessage));
+                player.sendMessage(miniMessage.deserialize(privateWarpMessage));
                 return;
             }
         }
@@ -392,7 +397,7 @@ public class EventListener implements Listener {
             if (now < cooldownEnd) {
                 long remainingSeconds = (cooldownEnd - now + 999) / 1000;
                 String cooldownMessage = config.getString("messages.cooldown", "&cYou must wait {cooldown} seconds before teleporting again.");
-                player.sendMessage(ChatColor.translateAlternateColorCodes('&', cooldownMessage.replace("{cooldown}", String.valueOf(remainingSeconds))));
+                player.sendMessage(miniMessage.deserialize(cooldownMessage.replace("{cooldown}", String.valueOf(remainingSeconds))));
                 return;
             }
         }
@@ -400,7 +405,7 @@ public class EventListener implements Listener {
         if (!player.hasPermission("signwarp.use")) {
             String noPermissionMessage = config.getString("messages.use_permission");
             if (noPermissionMessage != null) {
-                player.sendMessage(ChatColor.translateAlternateColorCodes('&', noPermissionMessage));
+                player.sendMessage(miniMessage.deserialize(noPermissionMessage));
             }
             return;
         }
@@ -412,7 +417,7 @@ public class EventListener implements Listener {
         }
         if (useItem != null && !validUseItem) {
             // 提示玩家該功能暫停
-            player.sendMessage(ChatColor.RED + "傳送使用功能暫停，請聯繫管理員。");
+            player.sendMessage(Component.text("傳送使用功能暫停，請聯繫管理員。", NamedTextColor.RED));
             return;
         }
         // 檢查玩家是否已經在傳送中
@@ -424,21 +429,21 @@ public class EventListener implements Listener {
         if (useItem != null) {
             Material requiredMaterial = Material.getMaterial(useItem.toUpperCase());
             if (requiredMaterial == null) {
-                player.sendMessage(ChatColor.RED + "配置中指定的使用物品無效。");
+                player.sendMessage(Component.text("配置中指定的使用物品無效。", NamedTextColor.RED));
                 return;
             }
             ItemStack handItem = event.getItem();
             if (handItem == null || handItem.getType() != requiredMaterial) {
                 String invalidItemMessage = config.getString("messages.invalid_item");
                 if (invalidItemMessage != null) {
-                    player.sendMessage(ChatColor.translateAlternateColorCodes('&', invalidItemMessage.replace("{use-item}", useItem)));
+                    player.sendMessage(miniMessage.deserialize(invalidItemMessage.replace("{use-item}", useItem)));
                 }
                 return;
             }
             if (handItem.getAmount() < useCost) {
                 String notEnoughItemMessage = config.getString("messages.not_enough_item");
                 if (notEnoughItemMessage != null) {
-                    player.sendMessage(ChatColor.translateAlternateColorCodes('&',
+                    player.sendMessage(miniMessage.deserialize(
                             notEnoughItemMessage.replace("{use-cost}", String.valueOf(useCost)).replace("{use-item}", useItem)));
                 }
                 return;
@@ -505,7 +510,7 @@ public class EventListener implements Listener {
             returnPendingItems(player);
             String warpNotFoundMessage = config.getString("messages.warp_not_found");
             if (warpNotFoundMessage != null) {
-                player.sendMessage(ChatColor.translateAlternateColorCodes('&', warpNotFoundMessage));
+                player.sendMessage(miniMessage.deserialize(warpNotFoundMessage));
             }
             return;
         }
@@ -515,7 +520,7 @@ public class EventListener implements Listener {
             if (!warp.canUseWarp(player.getUniqueId().toString()) && !player.hasPermission("signwarp.admin")) {
                 String privateWarpMessage = config.getString("messages.private_warp",
                         "&c這是一個私人傳送點，只有創建者、被邀請的玩家和群組成員可以使用。");
-                player.sendMessage(ChatColor.translateAlternateColorCodes('&', privateWarpMessage));
+                player.sendMessage(miniMessage.deserialize(privateWarpMessage));
 
                 // 返還已扣除的物品
                 UUID playerUUID = player.getUniqueId();
@@ -537,14 +542,14 @@ public class EventListener implements Listener {
         if (!canCrossDimensionTeleport(player, warp)) {
             return; // 如果不允許跨次元傳送，直接返回
         }
+
         // 讀取傳送延遲（單位：秒）
         int teleportDelay = config.getInt("teleport-delay", 5);
         String teleportMessage = config.getString("messages.teleport");
         if (teleportMessage != null) {
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&',
+            player.sendMessage(miniMessage.deserialize(
                     teleportMessage.replace("{warp-name}", warp.getName()).replace("{time}", String.valueOf(teleportDelay))));
         }
-
         // 其餘的傳送邏輯保持不變...
         UUID playerUUID = player.getUniqueId();
         // 取消玩家之前的傳送任務（若有）
@@ -585,6 +590,22 @@ public class EventListener implements Listener {
                     }
                 }
             }
+        }
+        if (playerVehicle instanceof Boat) {
+            // 使用 Adventure API 發送訊息
+            Component message = Component.text("無法在船上進行傳送！")
+                    .color(NamedTextColor.RED);
+
+            // 或者從配置檔讀取並使用 MiniMessage 格式
+            String configMessage = config.getString("messages.cannot_teleport_on_boat",
+                    "<red>玩家在船上無法進行傳送！</red>");
+            Component adventureMessage = MiniMessage.miniMessage().deserialize(configMessage);
+
+            player.sendMessage(adventureMessage);
+
+            // 返還已扣除的物品
+            returnPendingItems(player);
+            return;
         }
         Boat finalNearestBoat = nearestBoat;
         // 排程傳送任務（延遲後執行）
@@ -627,33 +648,16 @@ public class EventListener implements Listener {
             for (Entity entity : leashedEntities) {
                 entity.teleport(targetLocation);
             }
-            // 播放傳送音效與特效
-            String rawSoundName = config.getString("teleport-sound", "minecraft:entity.enderman.teleport");
-            // 将配置名转换为 namespaced key：小写并将下划线替换为点
-            String soundKeyString = rawSoundName.toLowerCase().replace('_', '.');
-            // 从字符串解析 NamespacedKey，若无命名空间则默认使用插件的命名空间
-            NamespacedKey soundKey = NamespacedKey.fromString(soundKeyString, plugin);
-            // 通过 Registry.SOUNDS 安全地获取 Sound（取代已弃用的 Sound.valueOf）
-            Sound sound = null;
-            if (soundKey != null) {
-                sound = Registry.SOUNDS.get(soundKey);
-            }
-            if (sound == null) {
-                plugin.getLogger().warning("未找到声音: " + rawSoundName);
-            }
-
-            Effect effect = Effect.valueOf(config.getString("teleport-effect", "ENDER_SIGNAL"));
             World world = targetLocation.getWorld();
             if (world != null) {
-                if (sound != null) {
-                    world.playSound(targetLocation, sound, 1.0f, 1.0f);
-                }
-                world.playEffect(targetLocation, effect, 10);
+                // 硬編碼音效：使用 Enderman 傳送音效
+                world.playSound(targetLocation, Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 1.0f);
+                // 硬編碼特效：使用 Ender Signal 特效
+                world.playEffect(targetLocation, Effect.ENDER_SIGNAL, 10);
             }
-
             String successMessage = config.getString("messages.teleport-success");
             if (successMessage != null) {
-                player.sendMessage(ChatColor.translateAlternateColorCodes('&',
+                player.sendMessage(miniMessage.deserialize(
                         successMessage.replace("{warp-name}", warp.getName())));
             }
             // 傳送成功後，清除該玩家扣除物品記錄
@@ -682,7 +686,7 @@ public class EventListener implements Listener {
         if (warpWorld == null) {
             String message = config.getString("messages.warp_world_not_found",
                     "&c傳送點所在的世界不存在或未載入！");
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
+            player.sendMessage(miniMessage.deserialize(message));
 
             // 返還已扣除的物品
             returnPendingItems(player);
@@ -708,7 +712,7 @@ public class EventListener implements Listener {
             if (message != null) {
                 // 直接使用 warpWorld.getName() 因為我們已經確認它不是 null
                 String targetWorldName = getDisplayWorldName(warpWorld.getName());
-                player.sendMessage(ChatColor.translateAlternateColorCodes('&',
+                player.sendMessage(miniMessage.deserialize(
                         message.replace("{target-world}", targetWorldName)));
             }
 
@@ -801,7 +805,7 @@ public class EventListener implements Listener {
                         pendingItemCosts.remove(playerUUID);
                     }
                     String cancelMessage = config.getString("messages.teleport-cancelled", "&cTeleportation cancelled.");
-                    player.sendMessage(ChatColor.translateAlternateColorCodes('&', cancelMessage));
+                    player.sendMessage(miniMessage.deserialize(cancelMessage));
                 }
             }
         }
@@ -913,6 +917,7 @@ public class EventListener implements Listener {
         SignData signData = new SignData(signBlock.getSide(Side.FRONT).getLines());
         return signData.isWarpSign();
     }
+
     @EventHandler
     public void onPlayerDeath(PlayerDeathEvent event) {
         Player player = event.getEntity();
@@ -930,7 +935,7 @@ public class EventListener implements Listener {
             returnPendingItems(player);
 
             String deathCancelMessage = config.getString("messages.teleport-death-cancelled", "&c傳送因死亡而取消。");
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', deathCancelMessage));
+            player.sendMessage(miniMessage.deserialize(deathCancelMessage));
         }
     }
 }

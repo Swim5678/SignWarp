@@ -1,7 +1,9 @@
 package com.swim.signwarp;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
@@ -11,6 +13,7 @@ import java.util.logging.Level;
 
 public class GroupCommand {
     private final SignWarp plugin;
+    private final MiniMessage miniMessage = MiniMessage.miniMessage();
 
     public GroupCommand(SignWarp plugin) {
         this.plugin = plugin;
@@ -20,7 +23,7 @@ public class GroupCommand {
 
     /**
      * 統一的配置訊息發送方法
-     * 處理配置訊息的讀取、佔位符替換和顏色代碼轉換
+     * 處理配置訊息的讀取、佔位符替換和MiniMessage格式轉換
      */
     private void sendConfigMessage(Player player, String configKey, String defaultMessage, String... placeholders) {
         String message = plugin.getConfig().getString(configKey, defaultMessage);
@@ -32,7 +35,39 @@ public class GroupCommand {
             }
         }
 
-        player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
+        // 將舊的顏色代碼轉換為MiniMessage格式
+        message = convertLegacyToMiniMessage(message);
+        Component component = miniMessage.deserialize(message);
+        player.sendMessage(component);
+    }
+
+    /**
+     * 將舊的&顏色代碼轉換為MiniMessage格式
+     */
+    private String convertLegacyToMiniMessage(String legacyText) {
+        return legacyText
+                .replace("&0", "<black>")
+                .replace("&1", "<dark_blue>")
+                .replace("&2", "<dark_green>")
+                .replace("&3", "<dark_aqua>")
+                .replace("&4", "<dark_red>")
+                .replace("&5", "<dark_purple>")
+                .replace("&6", "<gold>")
+                .replace("&7", "<gray>")
+                .replace("&8", "<dark_gray>")
+                .replace("&9", "<blue>")
+                .replace("&a", "<green>")
+                .replace("&b", "<aqua>")
+                .replace("&c", "<red>")
+                .replace("&d", "<light_purple>")
+                .replace("&e", "<yellow>")
+                .replace("&f", "<white>")
+                .replace("&k", "<obfuscated>")
+                .replace("&l", "<bold>")
+                .replace("&m", "<strikethrough>")
+                .replace("&n", "<underlined>")
+                .replace("&o", "<italic>")
+                .replace("&r", "<reset>");
     }
 
     /**
@@ -42,7 +77,7 @@ public class GroupCommand {
     private WarpGroup validateAndGetGroup(Player player, String groupName) {
         WarpGroup group = WarpGroup.getByName(groupName);
         if (group == null) {
-            sendConfigMessage(player, "messages.group_not_found", "&c找不到群組 '{group-name}'。",
+            sendConfigMessage(player, "messages.group_not_found", "<red>找不到群組 '{group-name}'。",
                     "{group-name}", groupName);
         }
         return group;
@@ -54,7 +89,7 @@ public class GroupCommand {
      */
     private boolean checkAndValidateAdminPermission(Player player, WarpGroup group) {
         if (!hasGroupAdminPermission(player, group)) {
-            sendConfigMessage(player, "messages.not_group_owner", "&c您沒有權限管理此群組！");
+            sendConfigMessage(player, "messages.not_group_owner", "<red>您沒有權限管理此群組！");
             return false;
         }
         return true;
@@ -74,7 +109,7 @@ public class GroupCommand {
     private Player validateOnlinePlayer(Player sender, String playerName) {
         Player targetPlayer = Bukkit.getPlayer(playerName);
         if (targetPlayer == null) {
-            sendConfigMessage(sender, "messages.player_not_online", "&c玩家 '{player}' 目前不在線上！請等待玩家上線後再進行操作。", "{player}", playerName);
+            sendConfigMessage(sender, "messages.player_not_online", "<red>玩家 '{player}' 目前不在線上！請等待玩家上線後再進行操作。", "{player}", playerName);
         }
         return targetPlayer;
     }
@@ -91,7 +126,11 @@ public class GroupCommand {
         List<WarpGroup.GroupMember> currentMembers = group.getGroupMembers();
 
         if (currentMembers.size() >= maxMembersPerGroup) {
-            player.sendMessage(ChatColor.RED + "群組成員數量已達上限（" + maxMembersPerGroup + "）！");
+            Component message = Component.text("群組成員數量已達上限（")
+                    .color(NamedTextColor.RED)
+                    .append(Component.text(maxMembersPerGroup))
+                    .append(Component.text("）！"));
+            player.sendMessage(message);
             return false;
         }
         return true;
@@ -107,7 +146,11 @@ public class GroupCommand {
 
         int maxWarpsPerGroup = plugin.getConfig().getInt("warp-groups.max-warps-per-group", 10);
         if (currentWarps.size() >= maxWarpsPerGroup) {
-            player.sendMessage(ChatColor.RED + "群組傳送點數量已達上限（" + maxWarpsPerGroup + "）！");
+            Component message = Component.text("群組傳送點數量已達上限（")
+                    .color(NamedTextColor.RED)
+                    .append(Component.text(maxWarpsPerGroup))
+                    .append(Component.text("）！"));
+            player.sendMessage(message);
             return false;
         }
         return true;
@@ -120,30 +163,36 @@ public class GroupCommand {
                                         String warpName, List<String> currentWarps) {
         Warp warp = Warp.getByName(warpName);
         if (warp == null) {
-            player.sendMessage(ChatColor.RED + "傳送點 '" + warpName + "' 不存在！");
+            Component message = Component.text("傳送點 '")
+                    .color(NamedTextColor.RED)
+                    .append(Component.text(warpName))
+                    .append(Component.text("' 不存在！"));
+            player.sendMessage(message);
             return false;
         }
 
         if (!warp.isPrivate()) {
-            sendConfigMessage(player, "messages.warp_not_private", "&c只有私人傳送點才能加入群組！");
+            sendConfigMessage(player, "messages.warp_not_private", "<red>只有私人傳送點才能加入群組！");
             return false;
         }
 
         // OP 和管理員可以管理任何人的傳送點
         if (!warp.getCreatorUuid().equals(player.getUniqueId().toString()) && !isOpOrAdmin(player)) {
-            player.sendMessage(ChatColor.RED + "您只能將自己的傳送點加入群組！");
+            Component message = Component.text("您只能將自己的傳送點加入群組！")
+                    .color(NamedTextColor.RED);
+            player.sendMessage(message);
             return false;
         }
 
         if (group.addWarp(warpName)) {
             sendConfigMessage(player, "messages.warp_added_to_group",
-                    "&a傳送點 '{warp-name}' 已加入群組 '{group-name}'。",
+                    "<green>傳送點 '{warp-name}' 已加入群組 '{group-name}'。",
                     "{warp-name}", warpName, "{group-name}", groupName);
             currentWarps.add(warpName);
             return true;
         } else {
             sendConfigMessage(player, "messages.warp_already_in_group",
-                    "&c傳送點 '{warp-name}' 已經在群組 '{existing-group}' 中。",
+                    "<red>傳送點 '{warp-name}' 已經在群組 '{existing-group}' 中。",
                     "{warp-name}", warpName);
             return false;
         }
@@ -153,19 +202,43 @@ public class GroupCommand {
      * 顯示群組詳細資訊
      */
     private void displayGroupInfo(Player player, WarpGroup group, String groupName) {
-        player.sendMessage(ChatColor.GREEN + "=== 群組資訊: " + groupName + " ===");
-        player.sendMessage(ChatColor.AQUA + "擁有者: " + group.ownerName());
+        Component header = Component.text("=== 群組資訊: ")
+                .color(NamedTextColor.GREEN)
+                .append(Component.text(groupName))
+                .append(Component.text(" ==="));
+        player.sendMessage(header);
+
+        Component owner = Component.text("擁有者: ")
+                .color(NamedTextColor.AQUA)
+                .append(Component.text(group.ownerName()));
+        player.sendMessage(owner);
 
         List<String> warps = group.getGroupWarps();
-        player.sendMessage(ChatColor.YELLOW + "傳送點 (" + warps.size() + "):");
+        Component warpsHeader = Component.text("傳送點 (")
+                .color(NamedTextColor.YELLOW)
+                .append(Component.text(warps.size()))
+                .append(Component.text("):"));
+        player.sendMessage(warpsHeader);
+
         for (String warp : warps) {
-            player.sendMessage(ChatColor.GRAY + "- " + warp);
+            Component warpItem = Component.text("- ")
+                    .color(NamedTextColor.GRAY)
+                    .append(Component.text(warp));
+            player.sendMessage(warpItem);
         }
 
         List<WarpGroup.GroupMember> members = group.getGroupMembers();
-        player.sendMessage(ChatColor.LIGHT_PURPLE + "成員 (" + members.size() + "):");
+        Component membersHeader = Component.text("成員 (")
+                .color(NamedTextColor.LIGHT_PURPLE)
+                .append(Component.text(members.size()))
+                .append(Component.text("):"));
+        player.sendMessage(membersHeader);
+
         for (WarpGroup.GroupMember member : members) {
-            player.sendMessage(ChatColor.GRAY + "- " + member.name());
+            Component memberItem = Component.text("- ")
+                    .color(NamedTextColor.GRAY)
+                    .append(Component.text(member.name()));
+            player.sendMessage(memberItem);
         }
     }
 
@@ -173,18 +246,20 @@ public class GroupCommand {
 
     public boolean handleGroupCommand(CommandSender sender, String[] args) {
         if (!(sender instanceof Player player)) {
-            sender.sendMessage(ChatColor.RED + "此指令只能由玩家執行！");
+            Component message = Component.text("此指令只能由玩家執行！")
+                    .color(NamedTextColor.RED);
+            sender.sendMessage(message);
             return true;
         }
 
         // 首先檢查群組功能是否啟用
         if (!isGroupFeatureEnabled()) {
-            sendConfigMessage(player, "messages.group_feature_disabled", "&c群組功能目前已停用！");
+            sendConfigMessage(player, "messages.group_feature_disabled", "<red>群組功能目前已停用！");
             return true;
         }
 
         if (!canPlayerUseGroups(player)) {
-            sendConfigMessage(player, "messages.group_feature_no_permission", "&c您沒有權限使用群組功能！");
+            sendConfigMessage(player, "messages.group_feature_no_permission", "<red>您沒有權限使用群組功能！");
             return true;
         }
 
@@ -323,19 +398,27 @@ public class GroupCommand {
 
     private boolean handleCreateGroup(Player player, String[] args) {
         if (args.length < 3) {
-            player.sendMessage(ChatColor.RED + "用法: /signwarp group create <群組名稱>");
+            Component message = Component.text("用法: /signwarp group create <群組名稱>")
+                    .color(NamedTextColor.RED);
+            player.sendMessage(message);
             return true;
         }
 
         String groupName = args[2];
         //名稱長度限制，最多 8 個字
         if (groupName.codePointCount(0, groupName.length()) > 8) {
-            player.sendMessage(ChatColor.RED + "群組名稱最多 8 個字！");
+            Component message = Component.text("群組名稱最多 8 個字！")
+                    .color(NamedTextColor.RED);
+            player.sendMessage(message);
             return true;
         }
         // 檢查群組是否已存在
         if (WarpGroup.getByName(groupName) != null) {
-            player.sendMessage(ChatColor.RED + "群組 '" + groupName + "' 已經存在！");
+            Component message = Component.text("群組 '")
+                    .color(NamedTextColor.RED)
+                    .append(Component.text(groupName))
+                    .append(Component.text("' 已經存在！"));
+            player.sendMessage(message);
             return true;
         }
 
@@ -344,7 +427,7 @@ public class GroupCommand {
             int maxGroups = plugin.getConfig().getInt("warp-groups.max-groups-per-player", 5);
             List<WarpGroup> playerGroups = WarpGroup.getPlayerGroups(player.getUniqueId().toString());
             if (playerGroups.size() >= maxGroups) {
-                sendConfigMessage(player, "messages.max_groups_reached", "&c您已達到群組建立上限！");
+                sendConfigMessage(player, "messages.max_groups_reached", "<red>您已達到群組建立上限！");
                 return true;
             }
         }
@@ -354,14 +437,16 @@ public class GroupCommand {
                 java.time.LocalDateTime.now().toString());
         group.save();
 
-        sendConfigMessage(player, "messages.group_created", "&a成功建立群組 '{group-name}'！",
+        sendConfigMessage(player, "messages.group_created", "<green>成功建立群組 '{group-name}'！",
                 "{group-name}", groupName);
         return true;
     }
 
     private boolean handleAddWarp(Player player, String[] args) {
         if (args.length < 4) {
-            player.sendMessage(ChatColor.RED + "用法: /signwarp group add <群組名稱> <傳送點名稱> [傳送點名稱2] ...");
+            Component message = Component.text("用法: /signwarp group add <群組名稱> <傳送點名稱> [傳送點名稱2] ...")
+                    .color(NamedTextColor.RED);
+            player.sendMessage(message);
             return true;
         }
 
@@ -389,7 +474,9 @@ public class GroupCommand {
 
     private boolean handleRemoveWarp(Player player, String[] args) {
         if (args.length < 4) {
-            player.sendMessage(ChatColor.RED + "用法: /signwarp group remove <群組名稱> <傳送點名稱>");
+            Component message = Component.text("用法: /signwarp group remove <群組名稱> <傳送點名稱>")
+                    .color(NamedTextColor.RED);
+            player.sendMessage(message);
             return true;
         }
 
@@ -403,17 +490,23 @@ public class GroupCommand {
 
         if (group.removeWarp(warpName)) {
             sendConfigMessage(player, "messages.warp_removed_from_group",
-                    "&a傳送點 '{warp-name}' 已從群組 '{group-name}' 中移除。",
+                    "<green>傳送點 '{warp-name}' 已從群組 '{group-name}' 中移除。",
                     "{warp-name}", warpName, "{group-name}", groupName);
         } else {
-            player.sendMessage(ChatColor.RED + "無法從群組中移除傳送點 '" + warpName + "'！");
+            Component message = Component.text("無法從群組中移除傳送點 '")
+                    .color(NamedTextColor.RED)
+                    .append(Component.text(warpName))
+                    .append(Component.text("'！"));
+            player.sendMessage(message);
         }
         return true;
     }
 
     private boolean handleInvitePlayer(Player player, String[] args) {
         if (args.length < 4) {
-            player.sendMessage(ChatColor.RED + "用法: /signwarp group invite <群組名稱> <玩家名稱>");
+            Component message = Component.text("用法: /signwarp group invite <群組名稱> <玩家名稱>")
+                    .color(NamedTextColor.RED);
+            player.sendMessage(message);
             return true;
         }
 
@@ -425,8 +518,7 @@ public class GroupCommand {
 
         if (!checkAndValidateAdminPermission(player, group)) return true;
 
-        Player targetPlayer = validateOnlinePlayer(player, targetPlayerName
-        );
+        Player targetPlayer = validateOnlinePlayer(player, targetPlayerName);
         if (targetPlayer == null) return true;
 
         // 檢查群組成員數量限制
@@ -434,18 +526,27 @@ public class GroupCommand {
 
         if (group.invitePlayer(targetPlayer.getUniqueId().toString(), targetPlayer.getName())) {
             sendConfigMessage(player, "messages.player_invited_to_group",
-                    "&a玩家 '{player}' 已被邀請加入群組 '{group-name}'。",
+                    "<green>玩家 '{player}' 已被邀請加入群組 '{group-name}'。",
                     "{player}", targetPlayerName, "{group-name}", groupName);
-            targetPlayer.sendMessage(ChatColor.GREEN + "您已被邀請加入群組 '" + groupName + "'！");
+
+            Component inviteMessage = Component.text("您已被邀請加入群組 '")
+                    .color(NamedTextColor.GREEN)
+                    .append(Component.text(groupName))
+                    .append(Component.text("'！"));
+            targetPlayer.sendMessage(inviteMessage);
         } else {
-            player.sendMessage(ChatColor.RED + "無法邀請玩家！（可能已經是群組成員）");
+            Component message = Component.text("無法邀請玩家！（可能已經是群組成員）")
+                    .color(NamedTextColor.RED);
+            player.sendMessage(message);
         }
         return true;
     }
 
     private boolean handleUninvitePlayer(Player player, String[] args) {
         if (args.length < 4) {
-            player.sendMessage(ChatColor.RED + "用法: /signwarp group uninvite <群組名稱> <玩家名稱>");
+            Component message = Component.text("用法: /signwarp group uninvite <群組名稱> <玩家名稱>")
+                    .color(NamedTextColor.RED);
+            player.sendMessage(message);
             return true;
         }
 
@@ -458,21 +559,26 @@ public class GroupCommand {
         if (!checkAndValidateAdminPermission(player, group)) return true;
 
         // 只允許移除在線玩家，確保即時通知
-        Player targetPlayer = validateOnlinePlayer(player, targetPlayerName
-        );
+        Player targetPlayer = validateOnlinePlayer(player, targetPlayerName);
         if (targetPlayer == null) return true;
 
         String targetUuid = targetPlayer.getUniqueId().toString();
 
         if (group.removeMember(targetUuid)) {
             sendConfigMessage(player, "messages.player_removed_from_group",
-                    "&a玩家 '{player}' 已從群組 '{group-name}' 中移除。",
+                    "<green>玩家 '{player}' 已從群組 '{group-name}' 中移除。",
                     "{player}", targetPlayerName, "{group-name}", groupName);
 
             // 即時通知被移除的玩家
-            targetPlayer.sendMessage(ChatColor.YELLOW + "您已被從群組 '" + groupName + "' 中移除。");
+            Component removeMessage = Component.text("您已被從群組 '")
+                    .color(NamedTextColor.YELLOW)
+                    .append(Component.text(groupName))
+                    .append(Component.text("' 中移除。"));
+            targetPlayer.sendMessage(removeMessage);
         } else {
-            player.sendMessage(ChatColor.RED + "無法移除玩家！");
+            Component message = Component.text("無法移除玩家！")
+                    .color(NamedTextColor.RED);
+            player.sendMessage(message);
         }
         return true;
     }
@@ -480,24 +586,36 @@ public class GroupCommand {
     private boolean handleListGroups(Player player) {
         List<WarpGroup> groups = WarpGroup.getPlayerGroups(player.getUniqueId().toString());
         if (groups.isEmpty()) {
-            player.sendMessage(ChatColor.YELLOW + "您沒有任何群組。");
+            Component message = Component.text("您沒有任何群組。")
+                    .color(NamedTextColor.YELLOW);
+            player.sendMessage(message);
             return true;
         }
 
-        player.sendMessage(ChatColor.GREEN + "=== 您的群組列表 ===");
+        Component header = Component.text("=== 您的群組列表 ===")
+                .color(NamedTextColor.GREEN);
+        player.sendMessage(header);
+
         for (WarpGroup group : groups) {
             List<String> warps = group.getGroupWarps();
             List<WarpGroup.GroupMember> members = group.getGroupMembers();
-            player.sendMessage(ChatColor.AQUA + group.groupName() +
-                    ChatColor.GRAY + " - 傳送點: " + warps.size() +
-                    ", 成員: " + members.size());
+
+            Component groupInfo = Component.text(group.groupName())
+                    .color(NamedTextColor.AQUA)
+                    .append(Component.text(" - 傳送點: ").color(NamedTextColor.GRAY))
+                    .append(Component.text(warps.size()))
+                    .append(Component.text(", 成員: "))
+                    .append(Component.text(members.size()));
+            player.sendMessage(groupInfo);
         }
         return true;
     }
 
     private boolean handleGroupInfo(Player player, String[] args) {
         if (args.length < 3) {
-            player.sendMessage(ChatColor.RED + "用法: /signwarp group info <群組名稱>");
+            Component message = Component.text("用法: /signwarp group info <群組名稱>")
+                    .color(NamedTextColor.RED);
+            player.sendMessage(message);
             return true;
         }
 
@@ -506,7 +624,9 @@ public class GroupCommand {
         if (group == null) return true;
 
         if (!hasGroupViewPermission(player, group, groupName)) {
-            player.sendMessage(ChatColor.RED + "您沒有權限查看此群組資訊！");
+            Component message = Component.text("您沒有權限查看此群組資訊！")
+                    .color(NamedTextColor.RED);
+            player.sendMessage(message);
             return true;
         }
 
@@ -516,7 +636,9 @@ public class GroupCommand {
 
     private boolean handleDeleteGroup(Player player, String[] args) {
         if (args.length < 3) {
-            player.sendMessage(ChatColor.RED + "用法: /signwarp group delete <群組名稱>");
+            Component message = Component.text("用法: /signwarp group delete <群組名稱>")
+                    .color(NamedTextColor.RED);
+            player.sendMessage(message);
             return true;
         }
 
@@ -527,29 +649,33 @@ public class GroupCommand {
         if (!checkAndValidateAdminPermission(player, group)) return true;
 
         group.delete();
-        sendConfigMessage(player, "messages.group_deleted", "&a群組 '{group-name}' 已刪除。",
+        sendConfigMessage(player, "messages.group_deleted", "<green>群組 '{group-name}' 已刪除。",
                 "{group-name}", groupName);
         return true;
     }
 
     private void sendGroupHelp(Player player) {
-        String header = plugin.getConfig().getString("messages.group_help_header", "&a=== SignWarp 群組指令說明 ===");
-        player.sendMessage(ChatColor.translateAlternateColorCodes('&', header));
+        String header = plugin.getConfig().getString("messages.group_help_header", "<green>=== SignWarp 群組指令說明 ===");
+        String convertedHeader = convertLegacyToMiniMessage(header);
+        Component headerComponent = miniMessage.deserialize(convertedHeader);
+        player.sendMessage(headerComponent);
 
         String[] helpMessages = {
-                plugin.getConfig().getString("messages.group_help_create", "&b/wp group create <群組名稱> &7- 建立新群組"),
-                plugin.getConfig().getString("messages.group_help_list", "&b/wp group list &7- 查看您的群組列表"),
-                plugin.getConfig().getString("messages.group_help_info", "&b/wp group info <群組名稱> &7- 查看群組詳細資訊"),
-                plugin.getConfig().getString("messages.group_help_add", "&b/wp group add <群組名稱> <傳送點> &7- 將傳送點加入群組"),
-                plugin.getConfig().getString("messages.group_help_remove", "&b/wp group remove <群組名稱> <傳送點> &7- 從群組移除傳送點"),
-                plugin.getConfig().getString("messages.group_help_invite", "&b/wp group invite <群組名稱> <玩家> &7- 邀請玩家加入群組"),
-                plugin.getConfig().getString("messages.group_help_uninvite", "&b/wp group uninvite <群組名稱> <玩家> &7- 移除群組成員"),
-                plugin.getConfig().getString("messages.group_help_delete", "&b/wp group delete <群組名稱> &7- 刪除群組")
+                plugin.getConfig().getString("messages.group_help_create", "<aqua>/wp group create <群組名稱> <gray>- 建立新群組"),
+                plugin.getConfig().getString("messages.group_help_list", "<aqua>/wp group list <gray>- 查看您的群組列表"),
+                plugin.getConfig().getString("messages.group_help_info", "<aqua>/wp group info <群組名稱> <gray>- 查看群組詳細資訊"),
+                plugin.getConfig().getString("messages.group_help_add", "<aqua>/wp group add <群組名稱> <傳送點> <gray>- 將傳送點加入群組"),
+                plugin.getConfig().getString("messages.group_help_remove", "<aqua>/wp group remove <群組名稱> <傳送點> <gray>- 從群組移除傳送點"),
+                plugin.getConfig().getString("messages.group_help_invite", "<aqua>/wp group invite <群組名稱> <玩家> <gray>- 邀請玩家加入群組"),
+                plugin.getConfig().getString("messages.group_help_uninvite", "<aqua>/wp group uninvite <群組名稱> <玩家> <gray>- 移除群組成員"),
+                plugin.getConfig().getString("messages.group_help_delete", "<aqua>/wp group delete <群組名稱> <gray>- 刪除群組")
         };
 
         for (String message : helpMessages) {
             if (message != null) {
-                player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
+                String convertedMessage = convertLegacyToMiniMessage(message);
+                Component messageComponent = miniMessage.deserialize(convertedMessage);
+                player.sendMessage(messageComponent);
             }
         }
     }
