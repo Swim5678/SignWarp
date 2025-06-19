@@ -418,6 +418,11 @@ public class EventListener implements Listener {
             player.sendMessage(ChatColor.RED + "傳送使用功能暫停，請聯繫管理員。");
             return;
         }
+        // 檢查玩家是否已經在傳送中
+        if (teleportTasks.containsKey(playerId)) {
+            // 玩家已經在傳送中，忽略此次點擊
+            return;
+        }
         // 如果需要扣除物品則做檢查與扣除
         if (useItem != null) {
             Material requiredMaterial = Material.getMaterial(useItem.toUpperCase());
