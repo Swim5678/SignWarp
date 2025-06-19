@@ -553,7 +553,7 @@ public class EventListener implements Listener {
             previousTask.cancel();
         }
         // 記錄玩家附近14格內，被牽引且牽引者為玩家的生物
-        Collection<Entity> leashedEntities = new ArrayList<>();
+        Collection<LivingEntity> leashedEntities = new ArrayList<>();
         for (Entity entity : player.getNearbyEntities(14, 14, 14)) {
             if (entity instanceof LivingEntity livingEntity) {
                 if (livingEntity.isLeashed() && livingEntity.getLeashHolder().equals(player)) {
@@ -587,6 +587,8 @@ public class EventListener implements Listener {
             }
         }
         Boat finalNearestBoat = nearestBoat;
+        Collection<LivingEntity> finalLeashedEntities = leashedEntities;
+
         // 排程傳送任務（延遲後執行）
         BukkitTask teleportTask = Bukkit.getScheduler().runTaskLater(plugin, () -> {
             Location targetLocation = warp.getLocation();
@@ -623,34 +625,25 @@ public class EventListener implements Listener {
                     finalNearestBoat.addPassenger(passenger);
                 }
             }
-            // 傳送被牽引生物
-            for (Entity entity : leashedEntities) {
-                entity.teleport(targetLocation);
+            // 傳送被牽引生物並恢復栓繩關係
+            for (LivingEntity entity : finalLeashedEntities) {
+                if (!entity.isDead()) {
+                    entity.teleport(targetLocation);
+                    // 延遲重新建立栓繩關係，確保實體完全傳送後再執行
+                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                        if (!entity.isDead() && player.isOnline()) {
+                            entity.setLeashHolder(player);
+                        }
+                    }, 2L); // 延遲 2 tick (0.1 秒)
+                }
             }
-            // 播放傳送音效與特效
-            String rawSoundName = config.getString("teleport-sound", "minecraft:entity.enderman.teleport");
-            // 将配置名转换为 namespaced key：小写并将下划线替换为点
-            String soundKeyString = rawSoundName.toLowerCase().replace('_', '.');
-            // 从字符串解析 NamespacedKey，若无命名空间则默认使用插件的命名空间
-            NamespacedKey soundKey = NamespacedKey.fromString(soundKeyString, plugin);
-            // 通过 Registry.SOUNDS 安全地获取 Sound（取代已弃用的 Sound.valueOf）
-            Sound sound = null;
-            if (soundKey != null) {
-                sound = Registry.SOUNDS.get(soundKey);
-            }
-            if (sound == null) {
-                plugin.getLogger().warning("未找到声音: " + rawSoundName);
-            }
-
-            Effect effect = Effect.valueOf(config.getString("teleport-effect", "ENDER_SIGNAL"));
             World world = targetLocation.getWorld();
             if (world != null) {
-                if (sound != null) {
-                    world.playSound(targetLocation, sound, 1.0f, 1.0f);
-                }
-                world.playEffect(targetLocation, effect, 10);
+                // 硬編碼音效：使用 Enderman 傳送音效
+                world.playSound(targetLocation, Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 1.0f);
+                // 硬編碼特效：使用 Ender Signal 特效
+                world.playEffect(targetLocation, Effect.ENDER_SIGNAL, 10);
             }
-
             String successMessage = config.getString("messages.teleport-success");
             if (successMessage != null) {
                 player.sendMessage(ChatColor.translateAlternateColorCodes('&',
