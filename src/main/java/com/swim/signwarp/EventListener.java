@@ -17,6 +17,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.*;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
+import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -499,6 +500,7 @@ public class EventListener implements Listener {
             // 傳送目標不存在，記錄詳細錯誤日誌
             plugin.getLogger().log(Level.WARNING, "[SignWarp] 傳送失敗：玩家 " + player.getName()
                     + " 試圖傳送至不存在的傳送點 '" + warpName + "'.");
+            returnPendingItems(player);
             String warpNotFoundMessage = config.getString("messages.warp_not_found");
             if (warpNotFoundMessage != null) {
                 player.sendMessage(ChatColor.translateAlternateColorCodes('&', warpNotFoundMessage));
@@ -923,5 +925,26 @@ public class EventListener implements Listener {
     private boolean isWarpSign(Sign signBlock) {
         SignData signData = new SignData(signBlock.getSide(Side.FRONT).getLines());
         return signData.isWarpSign();
+    }
+    @EventHandler
+    public void onPlayerDeath(PlayerDeathEvent event) {
+        Player player = event.getEntity();
+        UUID playerUUID = player.getUniqueId();
+
+        // 如果玩家在傳送延遲期間死亡，取消傳送並返還物品
+        if (teleportTasks.containsKey(playerUUID)) {
+            BukkitTask teleportTask = teleportTasks.get(playerUUID);
+            if (teleportTask != null && !teleportTask.isCancelled()) {
+                teleportTask.cancel();
+            }
+            teleportTasks.remove(playerUUID);
+            invinciblePlayers.remove(playerUUID);
+
+            // 返還已扣除的物品
+            returnPendingItems(player);
+
+            String deathCancelMessage = config.getString("messages.teleport-death-cancelled", "&c傳送因死亡而取消。");
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&', deathCancelMessage));
+        }
     }
 }
