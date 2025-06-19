@@ -567,17 +567,29 @@ public class EventListener implements Listener {
         Boat nearestBoat = null;
         double minDistance = Double.MAX_VALUE;
         Location playerLoc = player.getLocation();
+        boolean hasPlayerPassengersInNearbyBoats = false;
         for (Entity entity : player.getWorld().getNearbyEntities(playerLoc, 5, 5, 5)) {
             if (entity instanceof Boat boat) {
-                // 只處理有乘客的船，且不包含玩家乘客
+                // 檢查船上是否有玩家乘客
+                boolean hasPlayerPassenger = false;
                 boolean hasNonPlayerPassenger = false;
+
                 for (Entity passenger : boat.getPassengers()) {
-                    if (!(passenger instanceof Player)) {
+                    if (passenger instanceof Player) {
+                        hasPlayerPassenger = true;
+                    } else {
                         hasNonPlayerPassenger = true;
-                        break;
                     }
                 }
-                if (hasNonPlayerPassenger) {
+
+                // 如果船上有玩家乘客，標記為true並跳出迴圈
+                if (hasPlayerPassenger) {
+                    hasPlayerPassengersInNearbyBoats = true;
+                    break;
+                }
+
+                // 只處理有非玩家乘客且沒有玩家乘客的船
+                if (hasNonPlayerPassenger && !hasPlayerPassenger) {
                     double distance = boat.getLocation().distance(playerLoc);
                     if (distance < minDistance) {
                         minDistance = distance;
@@ -586,8 +598,19 @@ public class EventListener implements Listener {
                 }
             }
         }
+
+        // 如果附近船隻有玩家乘客，取消傳送並顯示訊息
+        if (hasPlayerPassengersInNearbyBoats) {
+            // 從配置文件獲取錯誤訊息
+            String boatWithPlayerMessage = config.getString("messages.boat-has-player",
+                    "&c船隻上有玩家，無法進行傳送！");
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&', boatWithPlayerMessage));
+
+            // 返還已扣除的物品
+            returnPendingItems(player);
+            return;
+        }
         Boat finalNearestBoat = nearestBoat;
-        Collection<LivingEntity> finalLeashedEntities = leashedEntities;
 
         // 排程傳送任務（延遲後執行）
         BukkitTask teleportTask = Bukkit.getScheduler().runTaskLater(plugin, () -> {
@@ -626,7 +649,7 @@ public class EventListener implements Listener {
                 }
             }
             // 傳送被牽引生物並恢復栓繩關係
-            for (LivingEntity entity : finalLeashedEntities) {
+            for (LivingEntity entity : leashedEntities) {
                 if (!entity.isDead()) {
                     entity.teleport(targetLocation);
                     // 延遲重新建立栓繩關係，確保實體完全傳送後再執行
