@@ -879,12 +879,14 @@ public class EventListener implements Listener {
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
         UUID playerId = event.getPlayer().getUniqueId();
+        Player player = event.getPlayer();
         if (teleportTasks.containsKey(playerId)) {
             BukkitTask task = teleportTasks.get(playerId);
             if (task != null && !task.isCancelled()) {
                 task.cancel();
             }
             teleportTasks.remove(playerId);
+            returnPendingItems(player);
         }
         pendingItemCosts.remove(playerId);
         cooldowns.remove(playerId);
