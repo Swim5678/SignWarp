@@ -93,6 +93,7 @@ messages:
   cross_dimension_disabled: "<red>跨次元傳送已被禁用！您無法傳送到位於 <yellow>{target-world} <red>世界的傳送點。"
   warp_world_not_found: "<red>傳送點所在的世界不存在或未載入！請聯絡管理員。"
   player_not_online: "<red>玩家 '{player}' 目前不在線上！請等待玩家上線後再進行操作。"
+  cannot_teleport_on_boat: "<red>玩家在船上無法進行傳送！</red>"
 
   # 群組功能相關訊息
   group_created: "<green>成功建立群組 '{group-name}'！"

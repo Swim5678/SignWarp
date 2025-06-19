@@ -542,6 +542,7 @@ public class EventListener implements Listener {
         if (!canCrossDimensionTeleport(player, warp)) {
             return; // 如果不允許跨次元傳送，直接返回
         }
+
         // 讀取傳送延遲（單位：秒）
         int teleportDelay = config.getInt("teleport-delay", 5);
         String teleportMessage = config.getString("messages.teleport");
@@ -549,7 +550,6 @@ public class EventListener implements Listener {
             player.sendMessage(miniMessage.deserialize(
                     teleportMessage.replace("{warp-name}", warp.getName()).replace("{time}", String.valueOf(teleportDelay))));
         }
-
         // 其餘的傳送邏輯保持不變...
         UUID playerUUID = player.getUniqueId();
         // 取消玩家之前的傳送任務（若有）
@@ -590,6 +590,22 @@ public class EventListener implements Listener {
                     }
                 }
             }
+        }
+        if (playerVehicle instanceof Boat) {
+            // 使用 Adventure API 發送訊息
+            Component message = Component.text("無法在船上進行傳送！")
+                    .color(NamedTextColor.RED);
+
+            // 或者從配置檔讀取並使用 MiniMessage 格式
+            String configMessage = config.getString("messages.cannot_teleport_on_boat",
+                    "<red>玩家在船上無法進行傳送！</red>");
+            Component adventureMessage = MiniMessage.miniMessage().deserialize(configMessage);
+
+            player.sendMessage(adventureMessage);
+
+            // 返還已扣除的物品
+            returnPendingItems(player);
+            return;
         }
         Boat finalNearestBoat = nearestBoat;
         // 排程傳送任務（延遲後執行）
