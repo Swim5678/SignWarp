@@ -506,12 +506,6 @@ public class EventListener implements Listener {
             return;
         }
 
-        // 檢查跨次元傳送限制
-        if (!canCrossDimensionTeleport(player, warp)) {
-            return; // 如果不允許跨次元傳送，直接返回
-        }
-
-        // 修復：使用 Warp 類別的完整權限檢查方法（包含群組成員檢查）
         if (warp.isPrivate()) {
             // 使用 canUseWarp 方法進行完整的權限檢查（包含群組成員權限）
             if (!warp.canUseWarp(player.getUniqueId().toString()) && !player.hasPermission("signwarp.admin")) {
@@ -535,7 +529,10 @@ public class EventListener implements Listener {
                 return;
             }
         }
-
+        // 檢查跨次元傳送限制
+        if (!canCrossDimensionTeleport(player, warp)) {
+            return; // 如果不允許跨次元傳送，直接返回
+        }
         // 讀取傳送延遲（單位：秒）
         int teleportDelay = config.getInt("teleport-delay", 5);
         String teleportMessage = config.getString("messages.teleport");
