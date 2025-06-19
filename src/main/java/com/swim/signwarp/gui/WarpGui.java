@@ -2,8 +2,10 @@ package com.swim.signwarp.gui;
 
 import com.swim.signwarp.Warp;
 import com.swim.signwarp.WarpInvite;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
@@ -25,17 +27,17 @@ public class WarpGui {
     static {
         NEXT_PAGE = new ItemStack(Material.ARROW);
         ItemMeta nextMeta = NEXT_PAGE.getItemMeta();
-        Objects.requireNonNull(nextMeta).setDisplayName(ChatColor.GREEN + "下一頁");
+        Objects.requireNonNull(nextMeta).displayName(Component.text("下一頁").color(NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false));
         NEXT_PAGE.setItemMeta(nextMeta);
 
         PREVIOUS_PAGE = new ItemStack(Material.ARROW);
         ItemMeta prevMeta = PREVIOUS_PAGE.getItemMeta();
-        Objects.requireNonNull(prevMeta).setDisplayName(ChatColor.RED + "上一頁");
+        Objects.requireNonNull(prevMeta).displayName(Component.text("上一頁").color(NamedTextColor.RED).decoration(TextDecoration.ITALIC, false));
         PREVIOUS_PAGE.setItemMeta(prevMeta);
 
         FILLER = new ItemStack(Material.BLACK_STAINED_GLASS_PANE);
         ItemMeta fillerMeta = FILLER.getItemMeta();
-        Objects.requireNonNull(fillerMeta).setDisplayName(" ");
+        Objects.requireNonNull(fillerMeta).displayName(Component.text(" "));
         FILLER.setItemMeta(fillerMeta);
     }
 
@@ -44,7 +46,8 @@ public class WarpGui {
         int totalWarps = warps.size();
         int totalPages = (int) Math.ceil((double) totalWarps / ITEMS_PER_PAGE);
 
-        Inventory gui = Bukkit.createInventory(null, 54, ChatColor.DARK_BLUE + "傳送點管理 - Page " + (page + 1));
+        Component title = Component.text("傳送點管理 - Page " + (page + 1)).color(NamedTextColor.DARK_BLUE);
+        Inventory gui = Bukkit.createInventory(null, 54, title);
 
         int start = page * ITEMS_PER_PAGE;
         int end = Math.min(start + ITEMS_PER_PAGE, totalWarps);
@@ -53,9 +56,13 @@ public class WarpGui {
             Warp warp = warps.get(i);
             ItemStack warpItem = new ItemStack(Material.OAK_SIGN);
             ItemMeta warpMeta = warpItem.getItemMeta();
-            Objects.requireNonNull(warpMeta).setDisplayName(ChatColor.DARK_GREEN + warp.getName());
-            List<String> lore = getStrings(warp);
-            warpMeta.setLore(lore);
+            Objects.requireNonNull(warpMeta).displayName(
+                    Component.text(warp.getName())
+                            .color(NamedTextColor.DARK_GREEN)
+                            .decoration(TextDecoration.ITALIC, false)
+            );
+            List<Component> lore = getComponents(warp);
+            warpMeta.lore(lore);
             warpItem.setItemMeta(warpMeta);
             gui.addItem(warpItem);
         }
@@ -72,30 +79,52 @@ public class WarpGui {
         player.openInventory(gui);
     }
 
-    private static @NotNull List<String> getStrings(Warp warp) {
-        List<String> lore = new ArrayList<>();
-        lore.add(ChatColor.GOLD + "世界: " + Objects.requireNonNull(warp.getLocation().getWorld()).getName());
+    private static @NotNull List<Component> getComponents(Warp warp) {
+        List<Component> lore = new ArrayList<>();
+
+        lore.add(Component.text("世界: " + Objects.requireNonNull(warp.getLocation().getWorld()).getName())
+                .color(NamedTextColor.GOLD)
+                .decoration(TextDecoration.ITALIC, false));
+
         // 將 XYZ 座標顯示在同一行，並四捨五入到整數位
-        lore.add(ChatColor.YELLOW + "座標: " +
-                Math.round(warp.getLocation().getX()) + ", " +
-                Math.round(warp.getLocation().getY()) + ", " +
-                Math.round(warp.getLocation().getZ()));
-        lore.add(ChatColor.DARK_GREEN + "建立時間: " + warp.getFormattedCreatedAt());
-        lore.add(ChatColor.GRAY + "建立者: " + warp.getCreator());
-        lore.add(ChatColor.AQUA + "狀態: " + (warp.isPrivate() ? "私人" : "公共"));
+        lore.add(Component.text("座標: " +
+                        Math.round(warp.getLocation().getX()) + ", " +
+                        Math.round(warp.getLocation().getY()) + ", " +
+                        Math.round(warp.getLocation().getZ()))
+                .color(NamedTextColor.YELLOW)
+                .decoration(TextDecoration.ITALIC, false));
+
+        lore.add(Component.text("建立時間: " + warp.getFormattedCreatedAt())
+                .color(NamedTextColor.DARK_GREEN)
+                .decoration(TextDecoration.ITALIC, false));
+
+        lore.add(Component.text("建立者: " + warp.getCreator())
+                .color(NamedTextColor.GRAY)
+                .decoration(TextDecoration.ITALIC, false));
+
+        lore.add(Component.text("狀態: " + (warp.isPrivate() ? "私人" : "公共"))
+                .color(NamedTextColor.AQUA)
+                .decoration(TextDecoration.ITALIC, false));
 
         // 新增：顯示被邀請的玩家
         if (warp.isPrivate()) {
             List<WarpInvite> invites = warp.getInvitedPlayers();
             if (!invites.isEmpty()) {
-                lore.add(ChatColor.LIGHT_PURPLE + "已邀請玩家:");
+                lore.add(Component.text("已邀請玩家:")
+                        .color(NamedTextColor.LIGHT_PURPLE)
+                        .decoration(TextDecoration.ITALIC, false));
                 for (WarpInvite invite : invites) {
-                    lore.add(ChatColor.GRAY + "- " + invite.invitedName());
+                    lore.add(Component.text("- " + invite.invitedName())
+                            .color(NamedTextColor.GRAY)
+                            .decoration(TextDecoration.ITALIC, false));
                 }
             }
         }
 
-        lore.add(ChatColor.RED + "點擊傳送");
+        lore.add(Component.text("點擊傳送")
+                .color(NamedTextColor.RED)
+                .decoration(TextDecoration.ITALIC, false));
+
         return lore;
     }
 }
