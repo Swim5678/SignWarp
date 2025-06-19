@@ -15,7 +15,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.*;
-import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
@@ -36,8 +35,6 @@ public class EventListener implements Listener {
     private final SignWarp plugin;
     // 儲存傳送任務（排程）
     private final ConcurrentHashMap<UUID, BukkitTask> teleportTasks = new ConcurrentHashMap<>();
-    // 傳送期間無敵玩家，避免在延遲中受傷
-    private final HashSet<UUID> invinciblePlayers = new HashSet<>();
     // 暫存扣除的物品數量（用於傳送取消時返還）
     private final ConcurrentHashMap<UUID, Integer> pendingItemCosts = new ConcurrentHashMap<>();
     // 傳送冷卻：記錄玩家下次可傳送的時間（毫秒）
@@ -555,8 +552,6 @@ public class EventListener implements Listener {
         if (previousTask != null) {
             previousTask.cancel();
         }
-        // 加入無敵列表，防止傳送期間受傷
-        invinciblePlayers.add(playerUUID);
         // 記錄玩家附近14格內，被牽引且牽引者為玩家的生物
         Collection<Entity> leashedEntities = new ArrayList<>();
         for (Entity entity : player.getNearbyEntities(14, 14, 14)) {
@@ -668,7 +663,6 @@ public class EventListener implements Listener {
             cooldowns.put(playerUUID, System.currentTimeMillis() + useCooldown * 1000L);
             // 清除傳送任務記錄與解除無敵狀態
             teleportTasks.remove(playerUUID);
-            invinciblePlayers.remove(playerUUID);
         }, teleportDelay * 20L); // 延遲時間轉為 tick
         teleportTasks.put(playerUUID, teleportTask);
     }
@@ -794,7 +788,6 @@ public class EventListener implements Listener {
                 if (teleportTask != null && !teleportTask.isCancelled()) {
                     teleportTask.cancel();
                     teleportTasks.remove(playerUUID);
-                    invinciblePlayers.remove(playerUUID);
                     // 傳送取消時返還扣除的物品
                     if (pendingItemCosts.containsKey(playerUUID)) {
                         String useItem = config.getString("use-item", "none");
@@ -810,18 +803,6 @@ public class EventListener implements Listener {
                     String cancelMessage = config.getString("messages.teleport-cancelled", "&cTeleportation cancelled.");
                     player.sendMessage(ChatColor.translateAlternateColorCodes('&', cancelMessage));
                 }
-            }
-        }
-    }
-
-    /**
-     * 取消傳送期間對玩家造成的傷害
-     */
-    @EventHandler
-    public void onEntityDamage(EntityDamageEvent event) {
-        if (event.getEntity() instanceof Player player) {
-            if (invinciblePlayers.contains(player.getUniqueId())) {
-                event.setCancelled(true);
             }
         }
     }
@@ -905,7 +886,6 @@ public class EventListener implements Listener {
             }
             teleportTasks.remove(playerId);
         }
-        invinciblePlayers.remove(playerId);
         pendingItemCosts.remove(playerId);
         cooldowns.remove(playerId);
     }
@@ -943,7 +923,6 @@ public class EventListener implements Listener {
                 teleportTask.cancel();
             }
             teleportTasks.remove(playerUUID);
-            invinciblePlayers.remove(playerUUID);
 
             // 返還已扣除的物品
             returnPendingItems(player);
