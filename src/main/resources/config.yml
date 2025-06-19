@@ -1,22 +1,17 @@
 # 使用傳送標誌時需要的物品（設為 none 代表不需要）
 use-item: ENDER_PEARL
-
 # 使用傳送標誌時消耗的物品數量
 use-cost: 1
-
 # 傳送前的冷卻時間（單位：秒）
 teleport-delay: 5
-
 # 設置傳送完成後的冷卻（單位：秒）
 teleport-use-cooldown: 10
-
 # 跨次元傳送設定
 cross-dimension-teleport:
   # 是否允許跨次元傳送 (true 允許, false 禁止)
   enabled: true
   # OP 是否可以無視跨次元限制 (true 允許, false 禁止)
   op-bypass: true
-
 # 群組功能相關設定
 warp-groups:
   # 是否啟用群組功能 (true 啟用, false 停用)
