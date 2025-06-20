@@ -1,7 +1,6 @@
 package com.swim.signwarp;
 
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+import net.md_5.bungee.api.ChatColor;
 
 public class SignData {
     static final String HEADER_WARP = "[Warp]";
@@ -14,22 +13,9 @@ public class SignData {
     final String warpName;
     private final String header;
 
-    // 原有的構造方法（用於向後兼容）
     SignData(String[] lines) {
-        header = stripColor(lines[0]);
+        header = ChatColor.stripColor(lines[0]);
         warpName = lines[1];
-    }
-
-    // 新的構造方法（使用 Component[]）
-    SignData(Component[] lines) {
-        header = stripColor(PlainTextComponentSerializer.plainText().serialize(lines[0]));
-        warpName = PlainTextComponentSerializer.plainText().serialize(lines[1]);
-    }
-
-    // 簡單的顏色代碼移除方法
-    private String stripColor(String text) {
-        if (text == null) return "";
-        return text.replaceAll("§[0-9a-fk-or]", "").replaceAll("&[0-9a-fk-or]", "");
     }
 
     Boolean isValidWarpName() {

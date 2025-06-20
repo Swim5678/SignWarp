@@ -59,210 +59,21 @@ public class EventListener implements Listener {
         config = plugin.getConfig();
     }
 
-    // ============= 共用方法區域 =============
-
     /**
-     * 統一的權限檢查方法
+     * 當插件啟動時，檢查配置檔設定項的合法性，並啟動定時清理任務。
      */
-    private enum PermissionType {
-        CREATE("signwarp.create", "messages.create_permission"),
-        USE("signwarp.use", "messages.use_permission"),
-        DESTROY("signwarp.destroy", "messages.destroy_permission"),
-        ADMIN("signwarp.admin", null);
-
-        private final String permission;
-        private final String messageKey;
-
-        PermissionType(String permission, String messageKey) {
-            this.permission = permission;
-            this.messageKey = messageKey;
-        }
-    }
-
-    private boolean hasPermission(Player player, PermissionType type) {
-        if (player.hasPermission(type.permission)) {
-            return true;
-        }
-
-        if (type.messageKey != null) {
-            sendConfigMessage(player, type.messageKey);
-        }
-        return false;
-    }
-
-    /**
-     * 統一的配置訊息發送方法
-     */
-    private void sendConfigMessage(Player player, String messageKey) {
-        sendConfigMessage(player, messageKey, null);
-    }
-
-    private void sendConfigMessage(Player player, String messageKey, Map<String, String> placeholders) {
-        String message = config.getString(messageKey);
-        if (message != null) {
-            if (placeholders != null) {
-                for (Map.Entry<String, String> entry : placeholders.entrySet()) {
-                    message = message.replace(entry.getKey(), entry.getValue());
-                }
-            }
-            player.sendMessage(miniMessage.deserialize(message));
-        }
-    }
-
-    /**
-     * 統一的物品返還方法
-     */
-    private void returnPendingItems(Player player) {
-        UUID playerUUID = player.getUniqueId();
-        if (pendingItemCosts.containsKey(playerUUID)) {
-            String useItem = config.getString("use-item", "none");
-            if (!"none".equalsIgnoreCase(useItem)) {
-                Material material = Material.getMaterial(useItem.toUpperCase());
-                if (material != null) {
-                    int cost = pendingItemCosts.get(playerUUID);
-                    player.getInventory().addItem(new ItemStack(material, cost));
-                }
-            }
-            pendingItemCosts.remove(playerUUID);
-        }
-    }
-
-    /**
-     * 統一的傳送任務取消方法
-     */
-    private void cancelTeleportTask(Player player, String messageKey) {
-        UUID playerUUID = player.getUniqueId();
-        BukkitTask teleportTask = teleportTasks.get(playerUUID);
-        if (teleportTask != null && !teleportTask.isCancelled()) {
-            teleportTask.cancel();
-            teleportTasks.remove(playerUUID);
-            returnPendingItems(player);
-            sendConfigMessage(player, messageKey);
-        }
-    }
-
-    /**
-     * 統一的傳送權限檢查方法
-     */
-    private boolean canUseWarp(Player player, Warp warp) {
-        // 管理員可以使用所有傳送點
-        if (hasPermission(player, PermissionType.ADMIN)) {
-            return true;
-        }
-
-        // 創建者可以使用自己的傳送點
-        if (player.getUniqueId().toString().equals(warp.getCreatorUuid())) {
-            return true;
-        }
-
-        // 如果是公共傳送點，任何人都可以使用
-        if (!warp.isPrivate()) {
-            return true;
-        }
-
-        // 使用 Warp 類別的完整權限檢查方法（包含群組成員檢查）
-        if (warp.canUseWarp(player.getUniqueId().toString())) {
-            return true;
-        }
-
-        // 發送私人傳送點錯誤訊息
-        sendConfigMessage(player, "messages.private_warp");
-        return false;
-    }
-
-    /**
-     * 統一的 SignData 獲取方法
-     */
-    private SignData getSignData(Block block) {
-        Sign signBlock = SignUtils.getSignFromBlock(block);
-        if (signBlock == null) {
-            return null;
-        }
-
-        Component[] lines = new Component[4];
-        for (int i = 0; i < 4; i++) {
-            lines[i] = signBlock.getSide(Side.FRONT).line(i);
-        }
-        return new SignData(lines);
-    }
-
-    /**
-     * 統一的物品檢查與扣除方法
-     */
-    private boolean checkAndConsumeItem(Player player) {
-        String itemName = config.getString("create-wpt-item", "none");
-        if ("none".equalsIgnoreCase(itemName)) {
-            return true; // 不需要物品
-        }
-
-        Material material = Material.getMaterial(itemName.toUpperCase());
-        if (material == null) {
-            player.sendMessage(Component.text("配置中指定的物品無效。", NamedTextColor.RED));
-            return false;
-        }
-
-        int cost = config.getInt("create-wpt-item-cost", 1);
-        ItemStack itemInHand = player.getInventory().getItemInMainHand();
-
-        if (itemInHand.getType() != material) {
-            Map<String, String> placeholders = Map.of("{use-item}", itemName);
-            sendConfigMessage(player, "messages.invalid_item", placeholders);
-            return false;
-        }
-
-        if (itemInHand.getAmount() < cost) {
-            Map<String, String> placeholders = Map.of(
-                    "{use-cost}", String.valueOf(cost),
-                    "{use-item}", itemName
-            );
-            sendConfigMessage(player, "messages.not_enough_item", placeholders);
-            return false;
-        }
-
-        // 扣除物品
-        int remaining = itemInHand.getAmount() - cost;
-        if (remaining <= 0) {
-            player.getInventory().setItemInMainHand(null);
-        } else {
-            itemInHand.setAmount(remaining);
-            player.getInventory().setItemInMainHand(itemInHand);
-        }
-
-        // 記錄扣除數量（用於傳送取消時返還）
-        if ("use-item".equals("create-wpt-item")) {
-            pendingItemCosts.put(player.getUniqueId(), cost);
-        }
-
-        return true;
-    }
-
-    /**
-     * 統一的冷卻檢查方法
-     */
-    private boolean checkCooldown(Player player) {
-        UUID playerId = player.getUniqueId();
-        long now = System.currentTimeMillis();
-
-        if (cooldowns.containsKey(playerId)) {
-            long cooldownEnd = cooldowns.get(playerId);
-            if (now < cooldownEnd) {
-                long remainingSeconds = (cooldownEnd - now + 999) / 1000;
-                Map<String, String> placeholders = Map.of("{cooldown}", String.valueOf(remainingSeconds));
-                sendConfigMessage(player, "messages.cooldown", placeholders);
-                return false;
-            }
-        }
-        return true;
-    }
-
-    // ============= 事件處理方法 =============
-
     @EventHandler
     public void onPluginEnable(PluginEnableEvent event) {
+        // 驗證配置檔中的 create-wpt-item 與 use-item 是否設定有效
         validateConfigItems();
+
+        // 啟動冷卻記錄的定時清理任務（例如每5分鐘清理一次過期冷卻）
         startCooldownCleanupTask();
     }
 
+    /**
+     * 檢查配置檔中指定的物品名稱是否有效，若無效則記錄日誌並停用相關功能。
+     */
     private void validateConfigItems() {
         String createWPTItem = config.getString("create-wpt-item", "none");
         if (!"none".equalsIgnoreCase(createWPTItem)) {
@@ -282,36 +93,62 @@ public class EventListener implements Listener {
         }
     }
 
+    /**
+     * 啟動定時任務，定期從 cooldowns 中移除已過期的記錄，
+     * 減少記憶體占用（每5分鐘一次）。
+     */
     private void startCooldownCleanupTask() {
-        plugin.getServer().getScheduler().runTaskTimer(plugin, () -> {
+        BukkitTask task = plugin.getServer().getScheduler().runTaskTimer(plugin, () -> {
             long now = System.currentTimeMillis();
             cooldowns.values().removeIf(cooldownEnd -> cooldownEnd <= now);
-        }, 6000L, 6000L);
+        }, 6000L, 6000L);  // 約每5分鐘執行一次 (20 tick * 60 sec * 5 = 6000 ticks)
     }
 
+    /**
+     * 檢查玩家是否可以創建新的傳送點
+     */
     private boolean canCreateWarp(Player player) {
+        // 檢查是否啟用創建數量限制
         int maxWarps = config.getInt("max-warps-per-player", 10);
         if (maxWarps == -1) {
-            return true;
+            return true; // -1 表示無限制
         }
 
+        // 檢查 OP 是否不受限制
         boolean opUnlimited = config.getBoolean("op-unlimited-warps", true);
         if (opUnlimited && player.isOp()) {
             return true;
         }
 
+        // 檢查玩家目前創建的傳送點數量
         int currentWarps = Warp.getPlayerWarpCount(player.getUniqueId().toString());
         return currentWarps < maxWarps;
     }
 
+    /**
+     * 取得玩家的傳送點數量資訊
+     */
+    private String getWarpCountInfo(Player player) {
+        int maxWarps = config.getInt("max-warps-per-player", 10);
+        boolean opUnlimited = config.getBoolean("op-unlimited-warps", true);
+
+        if (maxWarps == -1 || (opUnlimited && player.isOp())) {
+            return config.getString("messages.unlimited_warps", "&a您擁有無限制的傳送點創建權限。");
+        }
+
+        int currentWarps = Warp.getPlayerWarpCount(player.getUniqueId().toString());
+        String message = config.getString("messages.warp_count_info", "&a您目前已創建 {current} 個傳送點，限制為 {max} 個。");
+        return message.replace("{current}", String.valueOf(currentWarps))
+                .replace("{max}", String.valueOf(maxWarps));
+    }
+
+    /**
+     * 處理標識牌建立事件，包含建立傳送門(WARP)與傳送目標(WPT)的邏輯。
+     */
     @EventHandler
     public void onSignChange(SignChangeEvent event) {
-        Component[] lines = new Component[4];
-        for (int i = 0; i < 4; i++) {
-            lines[i] = event.line(i);
-        }
-        SignData signData = new SignData(lines);
-
+        SignData signData = new SignData(event.getLines());
+        // 僅處理符合傳送標識牌格式的標誌
         if (!signData.isWarpSign()) {
             return;
         }
@@ -319,8 +156,18 @@ public class EventListener implements Listener {
         Player player = event.getPlayer();
         Block signBlock = event.getBlock();
 
-        // 檢查依附方塊
-        Material supportType = getSupportBlockType(signBlock);
+        // 判斷告示牌的依附方塊：
+        Material supportType;
+        if (signBlock.getBlockData() instanceof WallSign wallSign) {
+            // 對於牆上告示牌，依附方塊是告示牌背面方塊
+            Block attachedBlock = signBlock.getRelative(wallSign.getFacing().getOppositeFace());
+            supportType = attachedBlock.getType();
+        } else {  // 站立型告示牌
+            Block attachedBlock = signBlock.getRelative(BlockFace.DOWN);
+            supportType = attachedBlock.getType();
+        }
+
+        // 檢查依附的方塊是否是受重力影響的：
         if (isGravityAffected(supportType)) {
             Component msg = Component.text("無法建立在沙子、礫石等重力方塊上！", NamedTextColor.RED);
             player.sendMessage(msg);
@@ -328,103 +175,130 @@ public class EventListener implements Listener {
             return;
         }
 
-        // 統一權限檢查
-        if (!hasPermission(player, PermissionType.CREATE)) {
+        // 檢查建立標識牌權限
+        if (!player.hasPermission("signwarp.create")) {
+            String noPermissionMessage = config.getString("messages.create_permission");
+            if (noPermissionMessage != null) {
+                player.sendMessage(miniMessage.deserialize(noPermissionMessage));
+            }
             event.setCancelled(true);
             return;
         }
 
         // 傳送點名稱有效性檢查
         if (!signData.isValidWarpName()) {
-            sendConfigMessage(player, "messages.no_warp_name");
+            String noWarpNameMessage = config.getString("messages.no_warp_name");
+            if (noWarpNameMessage != null) {
+                player.sendMessage(miniMessage.deserialize(noWarpNameMessage));
+            }
             event.setCancelled(true);
             return;
         }
 
+        // 取得已存在的傳送點
         Warp existingWarp = Warp.getByName(signData.warpName);
 
+        // 處理 WARP 標識牌：僅做檢查（若傳送點不存在則取消）
         if (signData.isWarp()) {
-            handleWarpSignCreation(event, player, signData, existingWarp);
-        } else if (signData.isWarpTarget()) {
-            handleWarpTargetCreation(event, player, signData, existingWarp);
+            if (existingWarp == null) {
+                String warpNotFoundMessage = config.getString("messages.warp_not_found");
+                if (warpNotFoundMessage != null) {
+                    player.sendMessage(miniMessage.deserialize(warpNotFoundMessage));
+                }
+                event.setCancelled(true);
+                return;
+            }
+            event.line(0, Component.text(SignData.HEADER_WARP).color(NamedTextColor.BLUE));
+            String warpCreatedMessage = config.getString("messages.warp_created");
+            if (warpCreatedMessage != null) {
+                player.sendMessage(miniMessage.deserialize(warpCreatedMessage));
+            }
+        }
+        // 處理 WPT 標識牌：創建新的傳送目標（需要收取物品）
+        else if (signData.isWarpTarget()) {
+            // 檢查是否允許建立傳送目標（同一傳送點不得重複建立）
+            if (existingWarp != null) {
+                String warpNameTakenMessage = config.getString("messages.warp_name_taken");
+                if (warpNameTakenMessage != null) {
+                    player.sendMessage(miniMessage.deserialize(warpNameTakenMessage));
+                }
+                event.setCancelled(true);
+                return;
+            }
+            // 檢查創建數量限制
+            if (!canCreateWarp(player)) {
+                int maxWarps = config.getInt("max-warps-per-player", 10);
+                int currentWarps = Warp.getPlayerWarpCount(player.getUniqueId().toString());
+                String limitMessage = config.getString("messages.warp_limit_reached", "&c您已達到最大傳送點創建數量限制 ({current}/{max})！");
+                limitMessage = limitMessage.replace("{current}", String.valueOf(currentWarps))
+                        .replace("{max}", String.valueOf(maxWarps));
+                player.sendMessage(miniMessage.deserialize(limitMessage));
+                event.setCancelled(true);
+                return;
+            }
+            // 當配置中設定無效時，不允許建立傳送目標
+            if (!validCreateWPTItem) {
+                player.sendMessage(Component.text("建立傳送目標功能暫停，請聯繫管理員。", NamedTextColor.RED));
+                event.setCancelled(true);
+                return;
+            }
+            // 從配置中取得建立 WPT 所需的物品與扣除數量
+            String createWPTItem = config.getString("create-wpt-item", "none");
+            int createWPTItemCost = config.getInt("create-wpt-item-cost", 1);
+            if (!"none".equalsIgnoreCase(createWPTItem)) {
+                Material material = Material.getMaterial(createWPTItem.toUpperCase());
+                if (material == null) {
+                    player.sendMessage(Component.text("配置中指定的物品無效，無法建立傳送目標。", NamedTextColor.RED));
+                    event.setCancelled(true);
+                    return;
+                }
+                // 檢查玩家主手是否持有足夠的指定物品
+                ItemStack itemInHand = player.getInventory().getItemInMainHand();
+                if (itemInHand.getType() != material || itemInHand.getAmount() < createWPTItemCost) {
+                    String notEnoughMessage = config.getString("messages.not_enough_item");
+                    if (notEnoughMessage != null) {
+                        player.sendMessage(miniMessage.deserialize(
+                                notEnoughMessage.replace("{use-cost}", String.valueOf(createWPTItemCost))
+                                        .replace("{use-item}", createWPTItem)));
+                    }
+                    event.setCancelled(true);
+                    return;
+                }
+                // 從玩家主手扣除指定數量的物品
+                int remaining = itemInHand.getAmount() - createWPTItemCost;
+                if (remaining <= 0) {
+                    player.getInventory().setItemInMainHand(null);
+                } else {
+                    itemInHand.setAmount(remaining);
+                    player.getInventory().setItemInMainHand(itemInHand);
+                }
+            }
+            // 建立傳送目標
+            String currentDateTime = LocalDateTime.now().toString();
+            boolean defaultVisibility = JavaPlugin.getPlugin(SignWarp.class).getConfig().getBoolean("default-visibility", false);
+            Warp warp = new Warp(signData.warpName, player.getLocation(), currentDateTime,
+                    player.getName(), player.getUniqueId().toString(), defaultVisibility);
+            warp.save();
+            event.line(0, Component.text(SignData.HEADER_WARP).color(NamedTextColor.BLUE));
+            boolean showCreatorOnSign = config.getBoolean("show-creator-on-sign", true);
+            if (showCreatorOnSign) {
+                // 從配置中獲取建立者顯示格式，如果沒有則使用預設格式
+                String creatorDisplayFormat = config.getString("messages.creator-display-format", "&7建立者: &f{creator}");
+                String formattedCreatorInfo = creatorDisplayFormat.replace("{creator}", player.getName());
+                // 由於標誌牌不支援 Adventure API，這裡使用舊的顏色代碼
+                event.setLine(2, formattedCreatorInfo.replace('&', '§'));
+            }
+            String targetSignCreatedMessage = config.getString("messages.target_sign_created");
+            if (targetSignCreatedMessage != null) {
+                player.sendMessage(miniMessage.deserialize(targetSignCreatedMessage));
+            }
         }
     }
 
-    private Material getSupportBlockType(Block signBlock) {
-        if (signBlock.getBlockData() instanceof WallSign wallSign) {
-            Block attachedBlock = signBlock.getRelative(wallSign.getFacing().getOppositeFace());
-            return attachedBlock.getType();
-        } else {
-            Block attachedBlock = signBlock.getRelative(BlockFace.DOWN);
-            return attachedBlock.getType();
-        }
-    }
-
-    private void handleWarpSignCreation(SignChangeEvent event, Player player, SignData signData, Warp existingWarp) {
-        if (existingWarp == null) {
-            sendConfigMessage(player, "messages.warp_not_found");
-            event.setCancelled(true);
-            return;
-        }
-        event.line(0, Component.text(SignData.HEADER_WARP).color(NamedTextColor.BLUE));
-        sendConfigMessage(player, "messages.warp_created");
-    }
-
-    private void handleWarpTargetCreation(SignChangeEvent event, Player player, SignData signData, Warp existingWarp) {
-        if (existingWarp != null) {
-            sendConfigMessage(player, "messages.warp_name_taken");
-            event.setCancelled(true);
-            return;
-        }
-
-        if (!canCreateWarp(player)) {
-            int maxWarps = config.getInt("max-warps-per-player", 10);
-            int currentWarps = Warp.getPlayerWarpCount(player.getUniqueId().toString());
-            Map<String, String> placeholders = Map.of(
-                    "{current}", String.valueOf(currentWarps),
-                    "{max}", String.valueOf(maxWarps)
-            );
-            sendConfigMessage(player, "messages.warp_limit_reached", placeholders);
-            event.setCancelled(true);
-            return;
-        }
-
-        if (!validCreateWPTItem) {
-            player.sendMessage(Component.text("建立傳送目標功能暫停，請聯繫管理員。", NamedTextColor.RED));
-            event.setCancelled(true);
-            return;
-        }
-
-        // 檢查並扣除物品
-        if (!checkAndConsumeItem(player
-        )) {
-            event.setCancelled(true);
-            return;
-        }
-
-        // 建立傳送目標
-        createWarpTarget(event, player, signData);
-    }
-
-    private void createWarpTarget(SignChangeEvent event, Player player, SignData signData) {
-        String currentDateTime = LocalDateTime.now().toString();
-        boolean defaultVisibility = config.getBoolean("default-visibility", false);
-        Warp warp = new Warp(signData.warpName, player.getLocation(), currentDateTime,
-                player.getName(), player.getUniqueId().toString(), defaultVisibility);
-        warp.save();
-
-        event.line(0, Component.text(SignData.HEADER_WARP).color(NamedTextColor.BLUE));
-
-        boolean showCreatorOnSign = config.getBoolean("show-creator-on-sign", true);
-        if (showCreatorOnSign) {
-            String creatorDisplayFormat = config.getString("messages.creator-display-format", "&7建立者: &f{creator}");
-            String formattedCreatorInfo = creatorDisplayFormat.replace("{creator}", player.getName());
-            event.line(2, miniMessage.deserialize(formattedCreatorInfo));
-        }
-
-        sendConfigMessage(player, "messages.target_sign_created");
-    }
-
+    /**
+     * 處理破壞標識牌事件。
+     * 安全性提升：要求玩家擁有 signwarp.destroy 權限才能破壞傳送標識牌。
+     */
     @EventHandler
     public void onBlockBreak(BlockBreakEvent event) {
         Block block = event.getBlock();
@@ -437,125 +311,144 @@ public class EventListener implements Listener {
             return;
         }
 
-        SignData signData = getSignData(block);
-        if (signData == null || !signData.isWarpTarget() || !signData.isValidWarpName()) {
+        Sign signBlock = SignUtils.getSignFromBlock(block);
+        if (signBlock == null) {
             return;
         }
-
+        SignData signData = new SignData(signBlock.getSide(Side.FRONT).getLines());
+        // 僅對傳送目標進行破壞邏輯處理（WPT）
+        if (!signData.isWarpTarget() || !signData.isValidWarpName()) {
+            return;
+        }
         Player player = event.getPlayer();
+        // 從資料庫取得該傳送點
         Warp warp = Warp.getByName(signData.warpName);
         if (warp == null) {
             return;
         }
-
-        // 權限檢查
-        boolean hasPermission = hasPermission(player, PermissionType.DESTROY) ||
+        // 權限檢查：
+        // 1. 檢查是否有全域破壞權限
+        // 2. 只檢查UUID是否匹配
+        boolean hasPermission = player.hasPermission("signwarp.destroy") ||
                 player.getUniqueId().toString().equals(warp.getCreatorUuid());
 
         if (!hasPermission) {
-            sendConfigMessage(player, "messages.destroy_permission");
+            String noPermissionMessage = config.getString("messages.destroy_permission");
+            if (noPermissionMessage != null) {
+                player.sendMessage(miniMessage.deserialize(noPermissionMessage));
+            }
             event.setCancelled(true);
             return;
         }
 
         // 執行破壞
         warp.remove();
-        sendConfigMessage(player, "messages.warp_destroyed");
+        String destroyedMsg = config.getString("messages.warp_destroyed");
+        if (destroyedMsg != null) {
+            player.sendMessage(miniMessage.deserialize(destroyedMsg));
+        }
     }
 
+    /**
+     * 處理玩家點擊標識牌傳送事件。
+     */
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
         if (event.getAction() != Action.RIGHT_CLICK_BLOCK) {
             return;
         }
-
         Block block = event.getClickedBlock();
         if (block == null) {
             return;
         }
-
-        SignData signData = getSignData(block);
-        if (signData == null) {
+        Sign signBlock = SignUtils.getSignFromBlock(block);
+        if (signBlock == null) {
             return;
         }
-
+        SignData signData = new SignData(signBlock.getSide(Side.FRONT).getLines());
         // 自動鎖定標識牌
-        Sign signBlock = SignUtils.getSignFromBlock(block);
-        if (signData.isWarpSign() && signBlock != null && !signBlock.isWaxed()) {
+        if (signData.isWarpSign() && !signBlock.isWaxed()) {
             signBlock.setWaxed(true);
             signBlock.update();
         }
-
+        // 若非傳送標識牌或傳送目標名稱不合法則忽略
         if (!signData.isWarp() || !signData.isValidWarpName()) {
             return;
         }
-
         Player player = event.getPlayer();
-        handleTeleportRequest(player, signData.warpName, event.getItem());
-    }
-
-    private void handleTeleportRequest(Player player, String warpName, ItemStack handItem) {
         UUID playerId = player.getUniqueId();
-        Warp warp = Warp.getByName(warpName);
+        Warp warp = Warp.getByName(signData.warpName);
 
-        // 檢查傳送點權限
-        if (warp != null && !canUseWarp(player, warp)) {
+        // 修復：使用 Warp 類別的完整權限檢查方法（包含群組成員檢查）
+        if (warp != null && warp.isPrivate()) {
+            // 使用 canUseWarp 方法進行完整的權限檢查（包含群組成員權限）
+            if (!warp.canUseWarp(player.getUniqueId().toString()) && !player.hasPermission("signwarp.admin")) {
+                // 從配置檔獲取錯誤訊息
+                String privateWarpMessage = config.getString("messages.private_warp",
+                        "&c這是一個私人傳送點，只有創建者、被邀請的玩家和群組成員可以使用。");
+                player.sendMessage(miniMessage.deserialize(privateWarpMessage));
+                return;
+            }
+        }
+        // 檢查傳送冷卻
+        long now = System.currentTimeMillis();
+        if (cooldowns.containsKey(playerId)) {
+            long cooldownEnd = cooldowns.get(playerId);
+            if (now < cooldownEnd) {
+                long remainingSeconds = (cooldownEnd - now + 999) / 1000;
+                String cooldownMessage = config.getString("messages.cooldown", "&cYou must wait {cooldown} seconds before teleporting again.");
+                player.sendMessage(miniMessage.deserialize(cooldownMessage.replace("{cooldown}", String.valueOf(remainingSeconds))));
+                return;
+            }
+        }
+        // 檢查傳送使用權限
+        if (!player.hasPermission("signwarp.use")) {
+            String noPermissionMessage = config.getString("messages.use_permission");
+            if (noPermissionMessage != null) {
+                player.sendMessage(miniMessage.deserialize(noPermissionMessage));
+            }
             return;
         }
-
-        // 檢查冷卻
-        if (!checkCooldown(player)) {
-            return;
+        // 當配置中使用物品無效時，停用扣除物品邏輯
+        String useItem = config.getString("use-item", "none");
+        int useCost = config.getInt("use-cost", 0);
+        if ("none".equalsIgnoreCase(useItem)) {
+            useItem = null;
         }
-
-        // 檢查使用權限
-        if (!hasPermission(player, PermissionType.USE)) {
-            return;
-        }
-
-        // 檢查配置有效性
-        if (!validUseItem) {
+        if (useItem != null && !validUseItem) {
+            // 提示玩家該功能暫停
             player.sendMessage(Component.text("傳送使用功能暫停，請聯繫管理員。", NamedTextColor.RED));
             return;
         }
-
-        // 檢查是否已在傳送中
+        // 檢查玩家是否已經在傳送中
         if (teleportTasks.containsKey(playerId)) {
+            // 玩家已經在傳送中，忽略此次點擊
             return;
         }
-
-        // 檢查船隻限制
-        if (player.getVehicle() instanceof Boat) {
-            sendConfigMessage(player, "messages.cannot_teleport_on_boat");
-            return;
-        }
-
-        // 檢查並扣除使用物品
-        String useItem = config.getString("use-item", "none");
-        if (!"none".equalsIgnoreCase(useItem)) {
+        // 如果需要扣除物品則做檢查與扣除
+        if (useItem != null) {
             Material requiredMaterial = Material.getMaterial(useItem.toUpperCase());
             if (requiredMaterial == null) {
                 player.sendMessage(Component.text("配置中指定的使用物品無效。", NamedTextColor.RED));
                 return;
             }
-
+            ItemStack handItem = event.getItem();
             if (handItem == null || handItem.getType() != requiredMaterial) {
-                Map<String, String> placeholders = Map.of("{use-item}", useItem);
-                sendConfigMessage(player, "messages.invalid_item", placeholders);
+                String invalidItemMessage = config.getString("messages.invalid_item");
+                if (invalidItemMessage != null) {
+                    player.sendMessage(miniMessage.deserialize(invalidItemMessage.replace("{use-item}", useItem)));
+                }
                 return;
             }
-
-            int useCost = config.getInt("use-cost", 0);
             if (handItem.getAmount() < useCost) {
-                Map<String, String> placeholders = Map.of(
-                        "{use-cost}", String.valueOf(useCost),
-                        "{use-item}", useItem
-                );
-                sendConfigMessage(player, "messages.not_enough_item", placeholders);
+                String notEnoughItemMessage = config.getString("messages.not_enough_item");
+                if (notEnoughItemMessage != null) {
+                    player.sendMessage(miniMessage.deserialize(
+                            notEnoughItemMessage.replace("{use-cost}", String.valueOf(useCost)).replace("{use-item}", useItem)));
+                }
                 return;
             }
-
-            // 扣除物品
+            // 立即扣除物品
             int remaining = handItem.getAmount() - useCost;
             if (remaining <= 0) {
                 player.getInventory().setItemInMainHand(null);
@@ -563,64 +456,108 @@ public class EventListener implements Listener {
                 handItem.setAmount(remaining);
                 player.getInventory().setItemInMainHand(handItem);
             }
-            pendingItemCosts.put(playerId, useCost);
+            // 記錄扣除數量，用於傳送取消時返還
+            pendingItemCosts.put(player.getUniqueId(), useCost);
         }
-
-        teleportPlayer(player, warpName);
+        // 呼叫傳送方法
+        teleportPlayer(player, signData.warpName);
     }
 
+    /**
+     * 將世界名稱轉換為友善的中文顯示名稱
+     *
+     * @param worldName 原始世界名稱
+     * @return 轉換後的世界名稱
+     */
+    private String getDisplayWorldName(String worldName) {
+        if (worldName == null) {
+            return "未知世界";
+        }
+
+        // 處理三大世界的名稱轉換
+        if (worldName.equals("world") || worldName.endsWith("_overworld")) {
+            return "主世界";
+        } else if (worldName.equals("world_nether") || worldName.endsWith("_nether")) {
+            return "地獄";
+        } else if (worldName.equals("world_the_end") || worldName.endsWith("_the_end")) {
+            return "終界";
+        }
+
+        // 如果不是三大世界，直接返回原始名稱
+        return worldName;
+    }
+
+    /**
+     * 處理傳送邏輯：
+     * - 檢查傳送目標是否存在，若不存在則記錄日誌並通知玩家。
+     * - 檢查跨次元傳送限制
+     * - 設定傳送延遲、無敵狀態、牽引生物傳送及附帶特效（音效、粒子）。
+     * - 若附近有符合條件的船隻，則採用改良邏輯：
+     * 先傳送點擊告示牌的玩家，再傳送該船，並將該船中所有非玩家乘客
+     * 臨時解除乘載關係後進行單獨傳送，待所有實體到達後再恢復載具關係。
+     * - 傳送期間同時支持玩家騎乘馬匹，先傳送玩家，再傳送馬匹並復原騎乘狀態。
+     * - 傳送結束後自動設定冷卻並清理相關記錄。
+     *
+     * @param player   傳送玩家
+     * @param warpName 傳送點名稱
+     */
     private void teleportPlayer(Player player, String warpName) {
         Warp warp = Warp.getByName(warpName);
         if (warp == null) {
+            // 傳送目標不存在，記錄詳細錯誤日誌
             plugin.getLogger().log(Level.WARNING, "[SignWarp] 傳送失敗：玩家 " + player.getName()
                     + " 試圖傳送至不存在的傳送點 '" + warpName + "'.");
             returnPendingItems(player);
-            sendConfigMessage(player, "messages.warp_not_found");
+            String warpNotFoundMessage = config.getString("messages.warp_not_found");
+            if (warpNotFoundMessage != null) {
+                player.sendMessage(miniMessage.deserialize(warpNotFoundMessage));
+            }
             return;
         }
 
-        // 再次檢查權限（防止競態條件）
-        if (warp.isPrivate() && !canUseWarp(player, warp)) {
-            returnPendingItems(player);
-            return;
-        }
+        if (warp.isPrivate()) {
+            // 使用 canUseWarp 方法進行完整的權限檢查（包含群組成員權限）
+            if (!warp.canUseWarp(player.getUniqueId().toString()) && !player.hasPermission("signwarp.admin")) {
+                String privateWarpMessage = config.getString("messages.private_warp",
+                        "&c這是一個私人傳送點，只有創建者、被邀請的玩家和群組成員可以使用。");
+                player.sendMessage(miniMessage.deserialize(privateWarpMessage));
 
+                // 返還已扣除的物品
+                UUID playerUUID = player.getUniqueId();
+                if (pendingItemCosts.containsKey(playerUUID)) {
+                    String useItem = config.getString("use-item", "none");
+                    if (!"none".equalsIgnoreCase(useItem)) {
+                        Material material = Material.getMaterial(useItem.toUpperCase());
+                        if (material != null) {
+                            int cost = pendingItemCosts.get(playerUUID);
+                            player.getInventory().addItem(new ItemStack(material, cost));
+                        }
+                    }
+                    pendingItemCosts.remove(playerUUID);
+                }
+                return;
+            }
+        }
         // 檢查跨次元傳送限制
         if (!canCrossDimensionTeleport(player, warp)) {
-            return;
+            return; // 如果不允許跨次元傳送，直接返回
         }
 
+        // 讀取傳送延遲（單位：秒）
         int teleportDelay = config.getInt("teleport-delay", 5);
-        Map<String, String> placeholders = Map.of(
-                "{warp-name}", warp.getName(),
-                "{time}", String.valueOf(teleportDelay)
-        );
-        sendConfigMessage(player, "messages.teleport", placeholders);
-
-        scheduleTeleportTask(player, warp, teleportDelay);
-    }
-
-    private void scheduleTeleportTask(Player player, Warp warp, int delay) {
+        String teleportMessage = config.getString("messages.teleport");
+        if (teleportMessage != null) {
+            player.sendMessage(miniMessage.deserialize(
+                    teleportMessage.replace("{warp-name}", warp.getName()).replace("{time}", String.valueOf(teleportDelay))));
+        }
+        // 其餘的傳送邏輯保持不變...
         UUID playerUUID = player.getUniqueId();
-
-        // 取消之前的傳送任務
+        // 取消玩家之前的傳送任務（若有）
         BukkitTask previousTask = teleportTasks.get(playerUUID);
         if (previousTask != null) {
             previousTask.cancel();
         }
-
-        // 準備傳送相關實體
-        Collection<Entity> leashedEntities = collectLeashedEntities(player);
-        Entity playerVehicle = player.getVehicle();
-        Boat nearestBoat = findNearestBoatWithPassengers(player);
-
-        // 排程傳送任務
-        BukkitTask teleportTask = Bukkit.getScheduler().runTaskLater(plugin, () -> executeTeleport(player, warp, playerVehicle, nearestBoat, leashedEntities), delay * 20L);
-
-        teleportTasks.put(playerUUID, teleportTask);
-    }
-
-    private Collection<Entity> collectLeashedEntities(Player player) {
+        // 記錄玩家附近14格內，被牽引且牽引者為玩家的生物
         Collection<Entity> leashedEntities = new ArrayList<>();
         for (Entity entity : player.getNearbyEntities(14, 14, 14)) {
             if (entity instanceof LivingEntity livingEntity) {
@@ -629,19 +566,22 @@ public class EventListener implements Listener {
                 }
             }
         }
-        return leashedEntities;
-    }
-
-    private Boat findNearestBoatWithPassengers(Player player) {
+        // 處理玩家騎乘的載具支援：記錄玩家當前的載具（不強制下載具）
+        final Entity playerVehicle = player.getVehicle();
+        // 尋找距離玩家最近，且船上有生物乘客的船（半徑5格）
         Boat nearestBoat = null;
         double minDistance = Double.MAX_VALUE;
         Location playerLoc = player.getLocation();
-
         for (Entity entity : player.getWorld().getNearbyEntities(playerLoc, 5, 5, 5)) {
             if (entity instanceof Boat boat) {
-                boolean hasNonPlayerPassenger = boat.getPassengers().stream()
-                        .anyMatch(passenger -> !(passenger instanceof Player));
-
+                // 只處理有乘客的船，且不包含玩家乘客
+                boolean hasNonPlayerPassenger = false;
+                for (Entity passenger : boat.getPassengers()) {
+                    if (!(passenger instanceof Player)) {
+                        hasNonPlayerPassenger = true;
+                        break;
+                    }
+                }
                 if (hasNonPlayerPassenger) {
                     double distance = boat.getLocation().distance(playerLoc);
                     if (distance < minDistance) {
@@ -651,174 +591,229 @@ public class EventListener implements Listener {
                 }
             }
         }
-        return nearestBoat;
-    }
+        if (playerVehicle instanceof Boat) {
+            // 使用 Adventure API 發送訊息
+            Component message = Component.text("無法在船上進行傳送！")
+                    .color(NamedTextColor.RED);
 
-    private void executeTeleport(Player player, Warp warp, Entity playerVehicle,
-                                 Boat nearestBoat, Collection<Entity> leashedEntities) {
-        Location targetLocation = warp.getLocation();
-        UUID playerUUID = player.getUniqueId();
+            // 或者從配置檔讀取並使用 MiniMessage 格式
+            String configMessage = config.getString("messages.cannot_teleport_on_boat",
+                    "<red>玩家在船上無法進行傳送！</red>");
+            Component adventureMessage = MiniMessage.miniMessage().deserialize(configMessage);
 
-        // 傳送玩家
-        player.teleport(targetLocation);
+            player.sendMessage(adventureMessage);
 
-        // 處理載具傳送
-        if (playerVehicle != null && !playerVehicle.isDead()) {
-            playerVehicle.teleport(targetLocation);
-            if (!playerVehicle.getPassengers().contains(player)) {
-                playerVehicle.addPassenger(player);
+            // 返還已扣除的物品
+            returnPendingItems(player);
+            return;
+        }
+        Boat finalNearestBoat = nearestBoat;
+        // 排程傳送任務（延遲後執行）
+        BukkitTask teleportTask = Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            Location targetLocation = warp.getLocation();
+            // 先傳送玩家
+            player.teleport(targetLocation);
+            // 如果玩家正在騎乘載具，傳送載具並恢復騎乘狀態
+            if (playerVehicle != null && !playerVehicle.isDead()) {
+                playerVehicle.teleport(targetLocation);
+                if (!playerVehicle.getPassengers().contains(player)) {
+                    playerVehicle.addPassenger(player);
+                }
             }
-        }
-
-        // 處理船隻傳送
-        if (nearestBoat != null) {
-            teleportBoatWithPassengers(nearestBoat, targetLocation);
-        }
-
-        // 傳送被牽引生物
-        leashedEntities.forEach(entity -> entity.teleport(targetLocation));
-
-        // 播放音效和特效
-        World world = targetLocation.getWorld();
-        if (world != null) {
-            world.playSound(targetLocation, Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 1.0f);
-            world.playEffect(targetLocation, Effect.ENDER_SIGNAL, 10);
-        }
-
-        // 完成傳送
-        finalizeTeleport(player, warp);
+            // 處理附近船隻傳送支援
+            if (finalNearestBoat != null) {
+                // 先將船上所有非玩家乘客記錄下來
+                List<Entity> nonPlayerPassengers = new ArrayList<>();
+                for (Entity passenger : finalNearestBoat.getPassengers()) {
+                    if (!(passenger instanceof Player)) {
+                        nonPlayerPassengers.add(passenger);
+                    }
+                }
+                // 臨時解除非玩家乘客的載具關係
+                for (Entity passenger : nonPlayerPassengers) {
+                    finalNearestBoat.removePassenger(passenger);
+                }
+                // 傳送船隻
+                finalNearestBoat.teleport(targetLocation);
+                // 傳送所有先前解除的乘客
+                for (Entity passenger : nonPlayerPassengers) {
+                    passenger.teleport(targetLocation);
+                }
+                // 恢復非玩家乘客與船隻的載具關係
+                for (Entity passenger : nonPlayerPassengers) {
+                    finalNearestBoat.addPassenger(passenger);
+                }
+            }
+            // 傳送被牽引生物
+            for (Entity entity : leashedEntities) {
+                entity.teleport(targetLocation);
+            }
+            World world = targetLocation.getWorld();
+            if (world != null) {
+                // 硬編碼音效：使用 Enderman 傳送音效
+                world.playSound(targetLocation, Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 1.0f);
+                // 硬編碼特效：使用 Ender Signal 特效
+                world.playEffect(targetLocation, Effect.ENDER_SIGNAL, 10);
+            }
+            String successMessage = config.getString("messages.teleport-success");
+            if (successMessage != null) {
+                player.sendMessage(miniMessage.deserialize(
+                        successMessage.replace("{warp-name}", warp.getName())));
+            }
+            // 傳送成功後，清除該玩家扣除物品記錄
+            pendingItemCosts.remove(playerUUID);
+            // 設定傳送使用冷卻，從配置中讀取（單位：秒）
+            int useCooldown = config.getInt("teleport-use-cooldown", 5);
+            cooldowns.put(playerUUID, System.currentTimeMillis() + useCooldown * 1000L);
+            // 清除傳送任務記錄與解除無敵狀態
+            teleportTasks.remove(playerUUID);
+        }, teleportDelay * 20L); // 延遲時間轉為 tick
+        teleportTasks.put(playerUUID, teleportTask);
     }
 
-    private void teleportBoatWithPassengers(Boat boat, Location targetLocation) {
-        List<Entity> nonPlayerPassengers = boat.getPassengers().stream()
-                .filter(passenger -> !(passenger instanceof Player))
-                .toList();
-
-        // 解除乘客關係
-        nonPlayerPassengers.forEach(boat::removePassenger);
-
-        // 傳送船隻和乘客
-        boat.teleport(targetLocation);
-        nonPlayerPassengers.forEach(passenger -> passenger.teleport(targetLocation));
-
-        // 恢復乘客關係
-        nonPlayerPassengers.forEach(boat::addPassenger);
-    }
-
-    private void finalizeTeleport(Player player, Warp warp) {
-        UUID playerUUID = player.getUniqueId();
-
-        Map<String, String> placeholders = Map.of("{warp-name}", warp.getName());
-        sendConfigMessage(player, "messages.teleport-success", placeholders);
-
-        // 清除扣除物品記錄
-        pendingItemCosts.remove(playerUUID);
-
-        // 設定冷卻
-        int useCooldown = config.getInt("teleport-use-cooldown", 5);
-        cooldowns.put(playerUUID, System.currentTimeMillis() + useCooldown * 1000L);
-
-        // 清除傳送任務記錄
-        teleportTasks.remove(playerUUID);
-    }
-
+    /**
+     * 檢查是否允許跨次元傳送
+     *
+     * @param player 玩家
+     * @param warp   傳送點
+     * @return 是否允許傳送
+     */
     private boolean canCrossDimensionTeleport(Player player, Warp warp) {
         World playerWorld = player.getWorld();
         World warpWorld = warp.getLocation().getWorld();
 
+        // 如果傳送點的世界不存在，顯示錯誤訊息
         if (warpWorld == null) {
-            sendConfigMessage(player, "messages.warp_world_not_found");
+            String message = config.getString("messages.warp_world_not_found",
+                    "&c傳送點所在的世界不存在或未載入！");
+            player.sendMessage(miniMessage.deserialize(message));
+
+            // 返還已扣除的物品
             returnPendingItems(player);
             return false;
         }
 
+        // 如果是同一個世界，直接允許
         if (!isDifferentWorld(playerWorld, warpWorld)) {
             return true;
         }
 
+        // 檢查配置是否允許跨次元傳送
         boolean crossDimensionEnabled = config.getBoolean("cross-dimension-teleport.enabled", true);
         if (!crossDimensionEnabled) {
+            // 檢查是否為 OP 且可以繞過限制
             boolean opBypass = config.getBoolean("cross-dimension-teleport.op-bypass", true);
             if (opBypass && player.isOp()) {
-                return true;
+                return true; // OP 可以繞過限制
             }
 
-            String targetWorldName = getDisplayWorldName(warpWorld.getName());
-            Map<String, String> placeholders = Map.of("{target-world}", targetWorldName);
-            sendConfigMessage(player, "messages.cross_dimension_disabled", placeholders);
+            // 不允許跨次元傳送，顯示錯誤訊息
+            String message = config.getString("messages.cross_dimension_disabled");
+            if (message != null) {
+                // 直接使用 warpWorld.getName() 因為我們已經確認它不是 null
+                String targetWorldName = getDisplayWorldName(warpWorld.getName());
+                player.sendMessage(miniMessage.deserialize(
+                        message.replace("{target-world}", targetWorldName)));
+            }
+
+            // 返還已扣除的物品
             returnPendingItems(player);
+
             return false;
         }
 
-        return true;
+        return true; // 允許跨次元傳送
     }
 
-    private String getDisplayWorldName(String worldName) {
-        if (worldName == null) {
-            return "未知世界";
-        }
-
-        if (worldName.equals("world") || worldName.endsWith("_overworld")) {
-            return "主世界";
-        } else if (worldName.equals("world_nether") || worldName.endsWith("_nether")) {
-            return "地獄";
-        } else if (worldName.equals("world_the_end") || worldName.endsWith("_the_end")) {
-            return "終界";
-        }
-
-        return worldName;
-    }
-
+    /**
+     * 檢查兩個世界是否不同
+     *
+     * @param world1 第一個世界
+     * @param world2 第二個世界
+     * @return 是否為不同世界
+     */
     private boolean isDifferentWorld(World world1, World world2) {
         if (world1 == null || world2 == null) {
-            return true;
+            return true; // 如果任一世界為 null，視為不同世界
         }
         return !world1.equals(world2);
     }
 
-    // ============= 其他事件處理 =============
+    private boolean canUseWarp(Player player, Warp warp) {
+        // 管理員可以使用所有傳送點
+        if (player.hasPermission("signwarp.admin")) {
+            return true;
+        }
 
+        // 創建者可以使用自己的傳送點
+        if (player.getUniqueId().toString().equals(warp.getCreatorUuid())) {
+            return true;
+        }
+
+        // 如果是公共傳送點，任何人都可以使用
+        if (!warp.isPrivate()) {
+            return true;
+        }
+
+        // 檢查是否被邀請
+        return warp.isPlayerInvited(player.getUniqueId().toString());
+    }
+
+    private void returnPendingItems(Player player) {
+        UUID playerUUID = player.getUniqueId();
+        if (pendingItemCosts.containsKey(playerUUID)) {
+            String useItem = config.getString("use-item", "none");
+            if (!"none".equalsIgnoreCase(useItem)) {
+                Material material = Material.getMaterial(useItem.toUpperCase());
+                if (material != null) {
+                    int cost = pendingItemCosts.get(playerUUID);
+                    player.getInventory().addItem(new ItemStack(material, cost));
+                }
+            }
+            pendingItemCosts.remove(playerUUID);
+        }
+    }
+
+    /**
+     * 玩家移動時若尚在傳送延遲階段內，則取消傳送。
+     * 並返還已扣除的物品，同時移除相關記錄。
+     */
     @EventHandler
     public void onPlayerMove(PlayerMoveEvent event) {
         Player player = event.getPlayer();
         UUID playerUUID = player.getUniqueId();
-
         if (teleportTasks.containsKey(playerUUID)) {
             Location from = event.getFrom();
             Location to = event.getTo();
-
-            if (from.getX() != to.getX() || from.getY() != to.getY() || from.getZ() != to.getZ()) {
-                cancelTeleportTask(player, "messages.teleport-cancelled");
+            if (from.getX() != Objects.requireNonNull(to).getX() ||
+                    from.getY() != to.getY() ||
+                    from.getZ() != to.getZ()) {
+                BukkitTask teleportTask = teleportTasks.get(playerUUID);
+                if (teleportTask != null && !teleportTask.isCancelled()) {
+                    teleportTask.cancel();
+                    teleportTasks.remove(playerUUID);
+                    // 傳送取消時返還扣除的物品
+                    if (pendingItemCosts.containsKey(playerUUID)) {
+                        String useItem = config.getString("use-item", "none");
+                        if (!"none".equalsIgnoreCase(useItem)) {
+                            Material material = Material.getMaterial(useItem.toUpperCase());
+                            if (material != null) {
+                                int cost = pendingItemCosts.get(playerUUID);
+                                player.getInventory().addItem(new ItemStack(material, cost));
+                            }
+                        }
+                        pendingItemCosts.remove(playerUUID);
+                    }
+                    String cancelMessage = config.getString("messages.teleport-cancelled", "&cTeleportation cancelled.");
+                    player.sendMessage(miniMessage.deserialize(cancelMessage));
+                }
             }
         }
     }
 
-    @EventHandler
-    public void onPlayerQuit(PlayerQuitEvent event) {
-        UUID playerId = event.getPlayer().getUniqueId();
-        Player player = event.getPlayer();
-
-        if (teleportTasks.containsKey(playerId)) {
-            BukkitTask task = teleportTasks.get(playerId);
-            if (task != null && !task.isCancelled()) {
-                task.cancel();
-            }
-            teleportTasks.remove(playerId);
-            returnPendingItems(player);
-        }
-
-        pendingItemCosts.remove(playerId);
-        cooldowns.remove(playerId);
-    }
-
-    @EventHandler
-    public void onPlayerDeath(PlayerDeathEvent event) {
-        Player player = event.getEntity();
-        cancelTeleportTask(player, "messages.teleport-death-cancelled");
-    }
-
-    // ============= 方塊保護相關事件 =============
-
+    /**
+     * 當活塞推動時，若涉及傳送標識牌則取消該事件。
+     */
     @EventHandler
     public void onBlockPistonExtend(BlockPistonExtendEvent event) {
         if (hasBlockWarpSign(event.getBlocks())) {
@@ -854,15 +849,19 @@ public class EventListener implements Listener {
         }
     }
 
+    /**
+     * 防止傳送告示牌依附的方塊受重力影響
+     */
     @EventHandler
     public void onBlockPhysics(BlockPhysicsEvent event) {
         Block block = event.getBlock();
         if (isGravityAffected(block.getType())) {
+            // 檢查是否有牆上的傳送告示牌依附
             if (hasBlockWarpSign(block)) {
                 event.setCancelled(true);
                 return;
             }
-
+            // 檢查上方是否有站立的傳送告示牌
             Block above = block.getRelative(BlockFace.UP);
             Sign signAbove = SignUtils.getSignFromBlock(above);
             if (signAbove != null && isWarpSign(signAbove)) {
@@ -871,27 +870,72 @@ public class EventListener implements Listener {
         }
     }
 
-    // ============= 輔助方法 =============
-
+    /**
+     * 檢查方塊類型是否受重力影響
+     */
     private boolean isGravityAffected(Material type) {
-        return type == Material.SAND || type == Material.GRAVEL ||
-                type == Material.ANVIL || type == Material.RED_SAND;
+        return type == Material.SAND || type == Material.GRAVEL || type == Material.ANVIL || type == Material.RED_SAND;
     }
 
+    /**
+     * 當玩家離線時，清理該玩家相關的傳送記錄與冷卻、無敵、扣除物品等資訊
+     */
+    @EventHandler
+    public void onPlayerQuit(PlayerQuitEvent event) {
+        UUID playerId = event.getPlayer().getUniqueId();
+        Player player = event.getPlayer();
+        if (teleportTasks.containsKey(playerId)) {
+            BukkitTask task = teleportTasks.get(playerId);
+            if (task != null && !task.isCancelled()) {
+                task.cancel();
+            }
+            teleportTasks.remove(playerId);
+            returnPendingItems(player);
+        }
+        pendingItemCosts.remove(playerId);
+        cooldowns.remove(playerId);
+    }
+
+    /**
+     * 輔助方法：判斷單一區塊是否含有傳送標識牌
+     */
     private boolean hasBlockWarpSign(Block block) {
         return SignUtils.hasBlockSign(block, this::isWarpSign);
     }
 
+    /**
+     * 輔助方法：判斷區塊列表中是否含有傳送標識牌
+     */
     private boolean hasBlockWarpSign(List<Block> blocks) {
         return SignUtils.hasBlockSign(blocks, this::isWarpSign);
     }
 
+    /**
+     * 輔助方法：檢查某一 Sign 是否為傳送標識牌
+     */
     private boolean isWarpSign(Sign signBlock) {
-        Component[] lines = new Component[4];
-        for (int i = 0; i < 4; i++) {
-            lines[i] = signBlock.getSide(Side.FRONT).line(i);
-        }
-        SignData signData = new SignData(lines);
+        SignData signData = new SignData(signBlock.getSide(Side.FRONT).getLines());
         return signData.isWarpSign();
+    }
+
+    @EventHandler
+    public void onPlayerDeath(PlayerDeathEvent event) {
+        Player player = event.getEntity();
+        UUID playerUUID = player.getUniqueId();
+
+        // 如果玩家在傳送延遲期間死亡，取消傳送並返還物品
+        if (teleportTasks.containsKey(playerUUID)) {
+            BukkitTask teleportTask = teleportTasks.get(playerUUID);
+            if (teleportTask != null && !teleportTask.isCancelled()) {
+                teleportTask.cancel();
+            }
+            teleportTasks.remove(playerUUID);
+
+            // 返還已扣除的物品
+            returnPendingItems(player);
+
+            String deathCancelMessage = config.getString("messages.teleport-death-cancelled", "&c傳送因死亡而取消。");
+            player.sendMessage(miniMessage.deserialize(deathCancelMessage));
+        }
     }
 }
