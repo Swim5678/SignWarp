@@ -208,7 +208,7 @@ public class EventListener implements Listener {
                 event.setCancelled(true);
                 return;
             }
-            event.line(0, Component.text(SignData.HEADER_WARP).color(NamedTextColor.BLUE));
+            event.setLine(0, "§9" + SignData.HEADER_WARP);
             String warpCreatedMessage = config.getString("messages.warp_created");
             if (warpCreatedMessage != null) {
                 player.sendMessage(miniMessage.deserialize(warpCreatedMessage));
@@ -279,7 +279,7 @@ public class EventListener implements Listener {
             Warp warp = new Warp(signData.warpName, player.getLocation(), currentDateTime,
                     player.getName(), player.getUniqueId().toString(), defaultVisibility);
             warp.save();
-            event.line(0, Component.text(SignData.HEADER_WARP).color(NamedTextColor.BLUE));
+            event.setLine(0, "§9" + SignData.HEADER_TARGET);
             boolean showCreatorOnSign = config.getBoolean("show-creator-on-sign", true);
             if (showCreatorOnSign) {
                 // 從配置中獲取建立者顯示格式，如果沒有則使用預設格式

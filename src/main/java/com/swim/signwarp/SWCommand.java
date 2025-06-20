@@ -324,22 +324,14 @@ public class SWCommand implements CommandExecutor, TabCompleter {
                                 break;
 
                             case "invite":
-                                // 補全所有線上玩家（除了指令執行者）
+                            case "uninvite":
+                                // 補全線上玩家名稱
                                 Bukkit.getOnlinePlayers().forEach(pl -> {
                                     if (!pl.equals(player) &&
                                             pl.getName().toLowerCase().startsWith(args[3].toLowerCase())) {
                                         completions.add(pl.getName());
                                     }
                                 });
-                                break;
-                            case "uninvite":
-                                // 補全該群組的成員
-                                List<WarpGroup.GroupMember> groupMembers = group.getGroupMembers();
-                                for (WarpGroup.GroupMember member : groupMembers) {
-                                    if (member.name().toLowerCase().startsWith(args[3].toLowerCase())) {
-                                        completions.add(member.name());
-                                    }
-                                }
                                 break;
                         }
                     }
