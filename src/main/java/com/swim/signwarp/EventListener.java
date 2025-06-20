@@ -873,7 +873,16 @@ public class EventListener implements Listener {
 
     private boolean isGravityAffected(Material type) {
         return type == Material.SAND || type == Material.GRAVEL ||
-                type == Material.ANVIL || type == Material.RED_SAND;
+                type == Material.ANVIL || type == Material.RED_SAND
+                || type == Material.TNT || type == Material.WHITE_CONCRETE_POWDER
+                || type == Material.ORANGE_CONCRETE_POWDER || type == Material.MAGENTA_CONCRETE_POWDER
+                || type == Material.LIGHT_BLUE_CONCRETE_POWDER || type == Material.YELLOW_CONCRETE_POWDER
+                || type == Material.LIME_CONCRETE_POWDER || type == Material.PINK_CONCRETE_POWDER
+                || type == Material.GRAY_CONCRETE_POWDER || type == Material.LIGHT_GRAY_CONCRETE_POWDER
+                || type == Material.CYAN_CONCRETE_POWDER || type == Material.PURPLE_CONCRETE_POWDER
+                || type == Material.BLUE_CONCRETE_POWDER || type == Material.BROWN_CONCRETE_POWDER
+                || type == Material.GREEN_CONCRETE_POWDER || type == Material.BLACK_CONCRETE_POWDER
+                || type == Material.RED_CONCRETE_POWDER;
     }
 
     private boolean hasBlockWarpSign(Block block) {
