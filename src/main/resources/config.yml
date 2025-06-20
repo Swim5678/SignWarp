@@ -1,6 +1,6 @@
-# 使用傳送標誌時需要的物品（設為 none 代表不需要）
+# 使用傳送點時需要的物品（設為 none 代表不需要）
 use-item: ENDER_PEARL
-# 使用傳送標誌時消耗的物品數量
+# 使用傳送點時消耗的物品數量
 use-cost: 1
 # 傳送前的等待時間（單位：秒）
 teleport-delay: 5
@@ -45,21 +45,20 @@ show-creator-on-sign: true
 # 自訂訊息
 ###############################################################################
 messages:
-  create_permission: "<red>您沒有權限建立傳送標誌！"
+  create_permission: "<red>您沒有權限建立傳送點！"
   no_warp_name: "<red>未設定傳送名稱！\n請在第二行設定傳送名稱。"
-  warp_created: "<green>傳送標誌已成功建立。"
+  warp_created: "<green>傳送點已成功建立。"
   warp_name_taken: "<red>已有相同名稱的傳送目標！"
   warp_destroyed: "<green>傳送目標已被摧毀。"
-  target_sign_created: "<green>傳送目標標誌已成功建立。"
-  destroy_permission: "<red>您沒有權限摧毀傳送標誌！"
+  target_sign_created: "<green>傳送點已成功建立。"
+  destroy_permission: "<red>您沒有權限摧毀傳送點！"
   invalid_item: "<red>您必須使用 {use-item} 來啟用此傳送！"
-  not_enough_item: "<red>您沒有足夠的 {use-item} x{use-cost} 來建立此傳送標誌。"
+  not_enough_item: "<red>您沒有足夠的 {use-item} x{use-cost} 來建立此傳送點。"
   warp_not_found: "<red>指定的傳送目標不存在！"
-  use_permission: "<red>您沒有權限使用此傳送標誌！"
+  use_permission: "<red>您沒有權限使用此傳送點！"
   teleport: "<yellow>正在傳送到 {warp-name}，{time} 秒後到達..."
   teleport-success: "<green>成功傳送到 {warp-name}。"
   teleport-cancelled: "<red>傳送已取消。"
-  notify-cost: "<green>您已被收取 {cost} 金幣進行傳送。"
   not_permission: "<red>您沒有權限！"
   cooldown: "<red>您必須等待 {cooldown} 秒才能再次傳送。"
   warp_visibility_changed: "<green>傳送點 {warp-name} 的使用權限已更改為{visibility}。"
