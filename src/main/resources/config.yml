@@ -89,7 +89,7 @@ messages:
   total_warps: "<green>{player}總共擁有 {count} 個傳送點"
   not_permission_view_others: "<red>您沒有權限查看其他玩家的傳送點！"
   player_not_found_or_no_warps: "<red>找不到玩家 '{player}' 或該玩家沒有任何傳送點。"
-  creator-display-format: "&7建立者: &f{creator}"
+  creator-display-format: "<gray>建立者: <white>{creator}"
   cross_dimension_disabled: "<red>跨次元傳送已被禁用！您無法傳送到位於 <yellow>{target-world} <red>世界的傳送點。"
   warp_world_not_found: "<red>傳送點所在的世界不存在或未載入！請聯絡管理員。"
   player_not_online: "<red>玩家 '{player}' 目前不在線上！請等待玩家上線後再進行操作。"
