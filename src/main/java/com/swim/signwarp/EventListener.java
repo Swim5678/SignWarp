@@ -412,8 +412,7 @@ public class EventListener implements Listener {
         Warp warp = new Warp(signData.warpName, player.getLocation(), currentDateTime,
                 player.getName(), player.getUniqueId().toString(), defaultVisibility);
         warp.save();
-
-        event.setLine(0, "§9" + SignData.HEADER_TARGET);
+        event.line(0, Component.text(SignData.HEADER_TARGET).color(NamedTextColor.BLUE));
         boolean showCreatorOnSign = config.getBoolean("show-creator-on-sign", true);
         if (showCreatorOnSign) {
             String creatorDisplayFormat = config.getString("messages.creator-display-format", "<gray>建立者: <white>{creator}");
