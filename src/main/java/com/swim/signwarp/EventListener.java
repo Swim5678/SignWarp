@@ -617,35 +617,90 @@ public class EventListener implements Listener {
 
         teleportTasks.put(playerUUID, teleportTask);
     }
-
     private Collection<Entity> collectLeashedEntities(Player player) {
-        Collection<Entity> leashedEntities = new ArrayList<>();
+        Set<Entity> allLeashedEntities = new HashSet<>();
+        Set<Entity> visited = new HashSet<>();
 
-        // 收集玩家直接牽引的實體
-        for (Entity entity : player.getNearbyEntities(14, 14, 14)) {
-            if (entity instanceof LivingEntity livingEntity) {
-                if (livingEntity.isLeashed() && livingEntity.getLeashHolder().equals(player)) {
-                    leashedEntities.add(livingEntity);
-                }
+        // 從配置檔讀取最大牽引深度，預設為5層
+        int maxLeashDepth = config.getInt("max-leash-depth", 5);
+        // 從配置檔讀取是否啟用遞迴牽引，預設啟用
+        boolean enableRecursiveLeash = config.getBoolean("enable-recursive-leash", true);
+
+        if (enableRecursiveLeash) {
+            // 從玩家開始遞迴收集所有牽引的實體
+            collectLeashedEntitiesRecursive(player, allLeashedEntities, visited, 0, maxLeashDepth);
+
+            // 檢查玩家的坐騎是否也在牽引實體
+            Entity playerVehicle = player.getVehicle();
+            if (playerVehicle instanceof LivingEntity vehicleEntity) {
+                collectLeashedEntitiesRecursive(vehicleEntity, allLeashedEntities, visited, 0, maxLeashDepth);
             }
+        } else {
+            // 如果停用遞迴功能，使用原本的邏輯
+            collectLeashedEntitiesOriginal(player, allLeashedEntities);
         }
 
-        // 檢查玩家的坐騎是否也牽引實體
-        Entity playerVehicle = player.getVehicle();
-        if (playerVehicle instanceof LivingEntity vehicleEntity) {
-            // 尋找被坐騎牽引的實體
-            for (Entity entity : playerVehicle.getNearbyEntities(14, 14, 14)) {
-                if (entity instanceof LivingEntity livingEntity) {
-                    if (livingEntity.isLeashed() && livingEntity.getLeashHolder().equals(vehicleEntity)) {
-                        if (!leashedEntities.contains(livingEntity)) {
-                            leashedEntities.add(livingEntity);
-                        }
+        return allLeashedEntities;
+    }
+
+    /**
+     * 帶深度限制的遞迴牽引收集方法
+     */
+    private void collectLeashedEntitiesRecursive(Entity holder, Set<Entity> collectedEntities,
+                                                 Set<Entity> visited, int currentDepth, int maxDepth) {
+        // 檢查深度限制
+        if (currentDepth >= maxDepth) {
+            return;
+        }
+
+        // 防止重複處理同一個實體
+        if (visited.contains(holder)) {
+            return;
+        }
+        visited.add(holder);
+
+        // 搜尋範圍內所有被此實體牽引的生物
+        for (Entity entity : holder.getNearbyEntities(14, 14, 14)) {
+            if (entity instanceof LivingEntity livingEntity) {
+                // 檢查是否被當前holder牽引
+                if (livingEntity.isLeashed() && livingEntity.getLeashHolder().equals(holder)) {
+                    // 避免重複添加
+                    if (!collectedEntities.contains(livingEntity)) {
+                        collectedEntities.add(livingEntity);
+
+                        // 遞迴檢查這個被牽引的實體是否也在牽引其他實體
+                        collectLeashedEntitiesRecursive(livingEntity, collectedEntities, visited,
+                                currentDepth + 1, maxDepth);
                     }
                 }
             }
         }
+    }
 
-        return leashedEntities;
+    /**
+     * 原本的邏輯（作為後備方案）
+     */
+    private void collectLeashedEntitiesOriginal(Player player, Set<Entity> collectedEntities) {
+        // 1. 收集玩家直接牽引的實體
+        for (Entity entity : player.getNearbyEntities(14, 14, 14)) {
+            if (entity instanceof LivingEntity livingEntity) {
+                if (livingEntity.isLeashed() && livingEntity.getLeashHolder().equals(player)) {
+                    collectedEntities.add(livingEntity);
+                }
+            }
+        }
+
+        // 2. 檢查玩家的坐騎是否也在牽引實體
+        Entity playerVehicle = player.getVehicle();
+        if (playerVehicle instanceof LivingEntity vehicleEntity) {
+            for (Entity entity : playerVehicle.getNearbyEntities(14, 14, 14)) {
+                if (entity instanceof LivingEntity livingEntity) {
+                    if (livingEntity.isLeashed() && livingEntity.getLeashHolder().equals(vehicleEntity)) {
+                        collectedEntities.add(livingEntity);
+                    }
+                }
+            }
+        }
     }
 
     private Boat findNearestBoatWithPassengers(Player player) {

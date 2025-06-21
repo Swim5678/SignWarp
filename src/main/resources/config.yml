@@ -6,6 +6,9 @@ use-cost: 1
 teleport-delay: 5
 # 設置傳送完成後的冷卻（單位：秒）
 teleport-use-cooldown: 10
+# 牽引相關設定
+enable-recursive-leash: true  # 是否啟用遞迴牽引功能
+max-leash-depth: 5           # 最大牽引深度（防止過長的牽引鏈）
 # 跨次元傳送設定
 cross-dimension-teleport:
   # 是否允許跨次元傳送 (true 允許, false 禁止)
@@ -24,6 +27,7 @@ warp-groups:
   max-members-per-group: 20
   # 是否允許普通玩家使用群組功能 (true 允許, false 僅限 OP)
   allow-normal-players: true
+
 
 ###############################################################################
 # 以下設定只影響建立 Warp Target (WPT) 標誌
