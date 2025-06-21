@@ -31,6 +31,7 @@ import org.bukkit.scheduler.BukkitTask;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 
 public class EventListener implements Listener {
@@ -617,6 +618,10 @@ public class EventListener implements Listener {
 
         teleportTasks.put(playerUUID, teleportTask);
     }
+
+    /**
+     * 優化版本的遞迴牽引收集方法，增加深度限制和警告訊息
+     */
     private Collection<Entity> collectLeashedEntities(Player player) {
         Set<Entity> allLeashedEntities = new HashSet<>();
         Set<Entity> visited = new HashSet<>();
@@ -627,13 +632,21 @@ public class EventListener implements Listener {
         boolean enableRecursiveLeash = config.getBoolean("enable-recursive-leash", true);
 
         if (enableRecursiveLeash) {
+            // 使用 AtomicInteger 來追蹤實際達到的最大深度
+            AtomicInteger maxReachedDepth = new AtomicInteger(0);
+
             // 從玩家開始遞迴收集所有牽引的實體
-            collectLeashedEntitiesRecursive(player, allLeashedEntities, visited, 0, maxLeashDepth);
+            collectLeashedEntitiesRecursive(player, allLeashedEntities, visited, 0, maxLeashDepth, maxReachedDepth);
 
             // 檢查玩家的坐騎是否也在牽引實體
             Entity playerVehicle = player.getVehicle();
             if (playerVehicle instanceof LivingEntity vehicleEntity) {
-                collectLeashedEntitiesRecursive(vehicleEntity, allLeashedEntities, visited, 0, maxLeashDepth);
+                collectLeashedEntitiesRecursive(vehicleEntity, allLeashedEntities, visited, 0, maxLeashDepth, maxReachedDepth);
+            }
+
+            // 檢查是否超過最大深度並發出警告
+            if (maxReachedDepth.get() >= maxLeashDepth) {
+                sendLeashDepthWarning(player, maxLeashDepth, allLeashedEntities.size());
             }
         } else {
             // 如果停用遞迴功能，使用原本的邏輯
@@ -644,10 +657,14 @@ public class EventListener implements Listener {
     }
 
     /**
-     * 帶深度限制的遞迴牽引收集方法
+     * 帶深度限制和深度追蹤的遞迴牽引收集方法
      */
     private void collectLeashedEntitiesRecursive(Entity holder, Set<Entity> collectedEntities,
-                                                 Set<Entity> visited, int currentDepth, int maxDepth) {
+                                                 Set<Entity> visited, int currentDepth, int maxDepth,
+                                                 AtomicInteger maxReachedDepth) {
+        // 更新實際達到的最大深度
+        maxReachedDepth.set(Math.max(maxReachedDepth.get(), currentDepth));
+
         // 檢查深度限制
         if (currentDepth >= maxDepth) {
             return;
@@ -670,11 +687,29 @@ public class EventListener implements Listener {
 
                         // 遞迴檢查這個被牽引的實體是否也在牽引其他實體
                         collectLeashedEntitiesRecursive(livingEntity, collectedEntities, visited,
-                                currentDepth + 1, maxDepth);
+                                currentDepth + 1, maxDepth, maxReachedDepth);
                     }
                 }
             }
         }
+    }
+
+    /**
+     * 發送牽引深度警告訊息給玩家
+     */
+    private void sendLeashDepthWarning(Player player, int maxDepth, int totalEntities) {
+        // 檢查是否啟用警告訊息
+        boolean enableDepthWarning = config.getBoolean("enable-leash-depth-warning", true);
+        if (!enableDepthWarning) {
+            return;
+        }
+
+        Map<String, String> placeholders = Map.of(
+                "{max-depth}", String.valueOf(maxDepth),
+                "{total-entities}", String.valueOf(totalEntities)
+        );
+
+        sendConfigMessage(player, "messages.leash_depth_warning", placeholders);
     }
 
     /**
