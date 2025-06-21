@@ -620,6 +620,8 @@ public class EventListener implements Listener {
 
     private Collection<Entity> collectLeashedEntities(Player player) {
         Collection<Entity> leashedEntities = new ArrayList<>();
+
+        // 收集玩家直接牽引的實體
         for (Entity entity : player.getNearbyEntities(14, 14, 14)) {
             if (entity instanceof LivingEntity livingEntity) {
                 if (livingEntity.isLeashed() && livingEntity.getLeashHolder().equals(player)) {
@@ -627,6 +629,22 @@ public class EventListener implements Listener {
                 }
             }
         }
+
+        // 檢查玩家的坐騎是否也牽引實體
+        Entity playerVehicle = player.getVehicle();
+        if (playerVehicle instanceof LivingEntity vehicleEntity) {
+            // 尋找被坐騎牽引的實體
+            for (Entity entity : playerVehicle.getNearbyEntities(14, 14, 14)) {
+                if (entity instanceof LivingEntity livingEntity) {
+                    if (livingEntity.isLeashed() && livingEntity.getLeashHolder().equals(vehicleEntity)) {
+                        if (!leashedEntities.contains(livingEntity)) {
+                            leashedEntities.add(livingEntity);
+                        }
+                    }
+                }
+            }
+        }
+
         return leashedEntities;
     }
 
@@ -657,24 +675,27 @@ public class EventListener implements Listener {
         Location targetLocation = warp.getLocation();
         UUID playerUUID = player.getUniqueId();
 
+        // 先傳送牽引的實體，避免牽繩斷裂
+        leashedEntities.forEach(entity -> entity.teleport(targetLocation));
+
         // 傳送玩家
         player.teleport(targetLocation);
 
         // 處理載具傳送
         if (playerVehicle != null && !playerVehicle.isDead()) {
             playerVehicle.teleport(targetLocation);
-            if (!playerVehicle.getPassengers().contains(player)) {
-                playerVehicle.addPassenger(player);
-            }
+            // 確保玩家重新上載具（若不在乘客中）
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                if (!playerVehicle.getPassengers().contains(player)) {
+                    playerVehicle.addPassenger(player);
+                }
+            });
         }
 
         // 處理船隻傳送
         if (nearestBoat != null) {
             teleportBoatWithPassengers(nearestBoat, targetLocation);
         }
-
-        // 傳送被牽引生物
-        leashedEntities.forEach(entity -> entity.teleport(targetLocation));
 
         // 播放音效和特效
         World world = targetLocation.getWorld();
